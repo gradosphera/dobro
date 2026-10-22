@@ -164,6 +164,13 @@ export interface OrganizerStatistic {
   hours?: number | null;
 }
 
+export interface OrganizationDocument {
+  id: string;
+  name: string;
+  size?: number | null;
+  url: string;
+}
+
 export interface OrganizationDetail {
   id: number;
   name: string | null;
@@ -172,7 +179,16 @@ export interface OrganizationDetail {
   /** «Результаты» — свободный текст, заполняемый организатором. */
   results?: string | null;
   verified?: boolean | null;
-  leader?: { firstName?: string | null; lastName?: string | null } | null;
+  verifiedByEsia?: boolean | null;
+  email?: string | null;
+  /** Документы карточки организации (публичные, без авторизации). */
+  docs?: OrganizationDocument[] | null;
+  socialMedia?: Record<string, string | null> | null;
+  leader?: {
+    firstName?: string | null;
+    lastName?: string | null;
+    volunteerId?: number | null;
+  } | null;
   settlement?: { shortName?: string | null; regionName?: string | null } | null;
   organizer?: { id?: number | null; statistic?: OrganizerStatistic | null } | null;
 }

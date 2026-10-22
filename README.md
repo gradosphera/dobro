@@ -363,3 +363,82 @@ robots.txt регулирует краулеров, а не API-клиентов
 * `maxDuration` = 10 с выбран так, чтобы задеплоиться на любом тарифе Vercel
   (включая Hobby с лимитом 10 с). На Pro/Enterprise его можно поднять
   одновременно с `BUDGET_MS` в `api/hours.ts`.
+
+---
+
+## 7. Привязка организации к DAO в TON
+
+Проверка состоит из двух независимых доказательств. Оба считаются на
+сервере и не требуют доверия к клиенту.
+
+| Слой | Что проверяется | Эндпоинт |
+|---|---|---|
+| **A. Криптографический** | `daoRoles.owner` DAO совпадает с кошельком из TON Connect | `GET /api/verify-owner` |
+| **B. Организационный** | в публичном документе карточки организации записан адрес DAO | `GET /api/verify-org-doc` |
+
+### 7.1 Слой A — владелец DAO
+
+```http
+GET /api/verify-owner?org=10072836&dao=EQDExlp6EjkVN-OJ1ZcGLEYlITaold5ytBP3e8g6g_BIRaZX&wallet=EQB7fbZPQ0MGHJt-hGpgAAfQT-tSXm2wMcOSzllnBs-zA3jz
+```
+
+```jsonc
+{
+  "ok": true,
+  "verdict": "owner",              // owner | proposalOwner | none | unknown
+  "org": { "id": 10072836, "name": "КГОО \"ГРАДОСФЕРА\"", "verified": true, "hours": 924.5 },
+  "dao": {
+    "address": "EQDEx…",
+    "daoId": 85,
+    "owner": "EQB7fbZ…",
+    "proposalOwner": "EQB7fbZ…",
+    "jetton": "EQBlary…",
+    "dns": "gradosphera.ton",
+    "terms": null
+  },
+  "checks": { "orgVerified": true, "walletIsOwner": true, "walletIsProposalOwner": true }
+}
+```
+
+* `ok` = организация верифицирована на dobro.ru **и** (если передан `wallet`)
+  кошелёк — `owner` DAO.
+* `verdict = proposalOwner` даёт право создавать предложения, но **не**
+  менять метаданные DAO: `SetMetadata` принимает только `owner`.
+* Адреса сравниваются по raw-представлению, поэтому `EQ…`/`UQ…`/`0:hex`
+  одного адреса эквивалентны.
+* Источник состояния — публичный `https://api.ton.vote/dao/{address}`.
+  `owner` может смениться, поэтому ответ кэшируется на 60 с.
+
+### 7.2 Слой B — документ организации
+
+```http
+GET /api/verify-org-doc?org=10072836&dao=EQDExlp6EjkVN-OJ1ZcGLEYlITaold5ytBP3e8g6g_BIRaZX
+```
+
+```jsonc
+{
+  "ok": true,
+  "found": true,
+  "document": { "name": "vote.txt", "size": 49, "sha256": "1be8b8a9…", "status": "match" },
+  "addresses": ["EQDEx…"],
+  "checks": { "orgVerified": true, "docsAvailable": true, "docFound": true }
+}
+```
+
+* Сервис читает `docs[]` из `GET /api/v2/organizations/{id}?with=organizer`,
+  скачивает только текстовые файлы (`.txt`, `.md`, `.json`), не больше
+  64 КБ, только с `storage.yandexcloud.net` и `dobro.ru` (https), с общим
+  бюджетом 7 с. PDF/PPT не парсятся — да, `vote.txt` и есть штатный формат.
+* `sha256` считается по исходным байтам файла и служит отпечатком
+  доказательства: его можно сохранить в БД и показывать пользователю.
+* Порядок сканирования: `vote.txt` → остальные текстовые файлы по размеру,
+  максимум 5 попыток.
+
+### 7.3 Тесты
+
+```bash
+node --experimental-strip-types --test test/verify.test.ts
+```
+
+Тесты ходят в реальные `api.ton.vote` и `dobro.ru` и проверяют референсную
+пару: организация 10072836 ↔ DAO 85 ↔ `vote.txt` ↔ owner.

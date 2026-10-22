@@ -15,6 +15,8 @@ import { fileURLToPath } from 'node:url';
 
 import hours from '../api/hours.ts';
 import total from '../api/total.ts';
+import verifyOrgDoc from '../api/verify-org-doc.ts';
+import verifyOwner from '../api/verify-owner.ts';
 
 const ROOT = fileURLToPath(new URL('..', import.meta.url));
 const PUBLIC = join(ROOT, 'public');
@@ -25,6 +27,8 @@ type Handler = (req: any, res: any) => Promise<unknown>;
 const routes: Record<string, Handler> = {
   '/api/hours': hours as Handler,
   '/api/total': total as Handler,
+  '/api/verify-owner': verifyOwner as Handler,
+  '/api/verify-org-doc': verifyOrgDoc as Handler,
 };
 
 const MIME: Record<string, string> = {
