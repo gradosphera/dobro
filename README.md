@@ -129,8 +129,10 @@ lib/dobro.ts     клиент dobro.ru (retry, таймауты, User-Agent, SSR
 lib/match.ts     нормализация и ранжирование совпадений
 lib/cache.ts     TTL-кэш в памяти лямбды (с дедупликацией параллельных запросов)
 public/index.html  UI
-scripts/dev-server.ts  локальный эмулятор роутинга Vercel
-test/local.test.ts    16 тестов (unit + интеграция с живым dobro.ru)
+scripts/dev-server.ts     локальный эмулятор роутинга Vercel
+scripts/verify-deploy.mjs сборка настоящим билдером Vercel + запуск лямбды
+test/local.test.ts        16 тестов (unit + интеграция с живым dobro.ru)
+test/build.test.ts        3 теста сборки под Vercel
 ```
 
 ### Алгоритм `/api/hours`
@@ -172,6 +174,37 @@ test/local.test.ts    16 тестов (unit + интеграция с живым
 > `Unexpected token 'A', "A server e"... is not valid JSON`. Теперь платформа
 > не успевает убить инстанс, а ответ всегда приходит в JSON.
 
+### Главная причина падения `FUNCTION_INVOCATION_FAILED` (найдена и исправлена)
+
+Билдер Vercel (`@vercel/node` v5) **не бандлит** проект: он трассирует
+зависимости через `@vercel/nft` и компилирует каждый `.ts` файл по отдельности
+через `ts.transpileModule`. В лямбду попадают файлы `lib/cache.js`,
+`lib/dobro.js`, `lib/match.js` — а импорты в `api/hours.js` оставались вида
+
+```js
+import { cached } from '../lib/cache.ts';   // ← такого файла в лямбде нет
+```
+
+Итог — `ERR_MODULE_NOT_FOUND` при загрузке модуля, и Vercel отвечает
+`500 FUNCTION_INVOCATION_FAILED` (а не наш JSON). Локально это не
+воспроизводилось: dev-режим и esbuild-бандл переписывают пути, а рантайм
+Vercel — нет.
+
+Исправление — опция `rewriteRelativeImportExtensions: true` в `tsconfig.json`:
+после трансляции импорты становятся `../lib/cache.js` и совпадают с файлами
+в лямбде.
+
+Проверяется без аккаунта Vercel:
+
+```bash
+npm run verify:deploy
+```
+
+Скрипт собирает проект **настоящим билдером `@vercel/node`**, выполняет
+полученную лямбду так же, как рантайм Vercel (`import(pathToFileURL(...))`),
+и проверяет, что `/api/hours` и `/api/total` отвечают 200. Регрессия
+закреплена тестами в `test/build.test.ts`.
+
 ### Проблема омонимов и как она решена
 
 У сетевых организаций десятки одноимённых филиалов: «Волонтеры-медики |
@@ -210,6 +243,9 @@ npm test
 
 # проверка типов
 npx tsc --noEmit
+
+# сборка настоящим билдером Vercel + запуск лямбды (без аккаунта)
+npm run verify:deploy
 ```
 
 ### Деплой на Vercel

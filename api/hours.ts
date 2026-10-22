@@ -32,7 +32,7 @@ import { preselectCandidates, rankResults } from '../lib/match.ts';
  * vercel.json (10 c) — иначе платформа убьёт инстанс и отдаст 500 вместо
  * JSON. При исчерпании бюджета возвращаются те данные, что успели собраться.
  */
-const BUDGET_MS = 8_000;
+const BUDGET_MS = 7_000;
 const SEARCH_LIMIT = 50;
 const DEFAULT_DETAIL_CANDIDATES = 5;
 const MAX_DETAIL_CANDIDATES = 8;
