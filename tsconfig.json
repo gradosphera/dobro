@@ -23,6 +23,8 @@
   "include": [
     "api/**/*.ts",
     "lib/**/*.ts",
-    "test/**/*.ts"
+    "test/**/*.ts",
+    "web/**/*.ts",
+    "scripts/**/*.ts"
   ]
 }

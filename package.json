@@ -6,12 +6,13 @@
   "description": "Сканер dobro.ru: общее число зарегистрированных волонтёрских часов по организациям",
   "scripts": {
     "dev": "vercel dev",
-    "build": "tsc --noEmit",
+    "build": "tsc --noEmit && node scripts/build-web.mjs",
     "typecheck": "tsc --noEmit",
     "test": "node --experimental-strip-types --test test/*.test.ts",
     "verify:deploy": "node scripts/verify-deploy.mjs",
     "db:migrate": "node --experimental-strip-types scripts/db-migrate.ts",
-    "snapshot": "node --experimental-strip-types scripts/snapshot.ts"
+    "snapshot": "node --experimental-strip-types scripts/snapshot.ts",
+    "build:web": "node scripts/build-web.mjs"
   },
   "engines": {
     "node": ">=20"
@@ -20,10 +21,13 @@
     "@neondatabase/serverless": "^1.2.0",
     "@ton/core": "^0.63.1",
     "@ton/crypto": "^3.3.0",
-    "@vercel/node": "^5.3.0"
+    "@tonconnect/ui": "^2.4.4",
+    "@vercel/node": "^5.3.0",
+    "buffer": "^6.0.3"
   },
   "devDependencies": {
     "@types/node": "^22.10.2",
+    "esbuild": "^0.28.2",
     "typescript": "^5.7.3"
   }
 }

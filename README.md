@@ -605,3 +605,37 @@ dobro/att/1 o=10072836 v=95490358 p=2026-10 h=12.5 d=1be8b8a926ff0386
 
 Статус: снапшот и формат аттестации готовы (тесты `test/snapshot.test.ts`);
 дальше — TON Connect в статике, on-chain читатель, CLI выплат.
+
+---
+
+## 12. TON Connect и аттестация из браузера
+
+Страница: `/attest.html?org=10072836` (ссылка есть на дашборде).
+Сервер не участвует: снапшот — статика, кошелёк подписывает транзакцию
+локально, запись уходит в TON.
+
+### Сборка
+
+```bash
+npm run build:web
+# для корректного manifest.url на проде:
+SITE_URL=https://ваш-домен npm run build:web
+```
+
+Генерируются (в git не попадают): `public/js/app.js`,
+`public/vendor/tonconnect-ui.min.js`, `public/tonconnect-manifest.json`.
+Для локальной проверки: `npm run build:web` и раздать `public/`
+(`python3 -m http.server 3000 --directory public`).
+
+### Сценарий
+
+1. Подключить кошелёк (mainnet) через TON Connect.
+2. UI читает owner DAO из `api.ton.vote` (если сеть недоступна — берёт
+   owner из снапшота и предупреждает) и сверяет с адресом кошелька.
+3. Лидер вводит `volunteerId`, месяц и часы; видит `floor(hours)` BLG.
+4. `sendTransaction` — self-transfer на 0.01 TON с комментарием
+   `dobro/att/1 …`; комиссию платит лидер, остаток возвращается.
+5. После отправки показывается комментарий и ссылка на историю кошелька.
+
+Ограничения: owner DAO — единственный, кто может писать; тестнет
+отключён (DAO mainnet); TON Connect UI поставляется локально, без CDN.
