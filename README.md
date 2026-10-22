@@ -442,3 +442,33 @@ node --experimental-strip-types --test test/verify.test.ts
 
 Тесты ходят в реальные `api.ton.vote` и `dobro.ru` и проверяют референсную
 пару: организация 10072836 ↔ DAO 85 ↔ `vote.txt` ↔ owner.
+
+---
+
+## 8. База данных (Neon Postgres)
+
+Без `DATABASE_URL` сервис работает в режиме только-чтения: слои A/B
+функционируют, а эндпоинты с записью отвечают `503`. Это позволяет
+задеплоить проект до подключения базы.
+
+```bash
+# 1. Подключить Neon: Vercel → Storage → Neon (переменная DATABASE_URL
+#    или POSTGRES_URL появится автоматически), либо локально:
+export DATABASE_URL='postgres://…'
+
+# 2. Создать таблицы
+npm run db:migrate
+```
+
+Схема — `db/schema.sql`:
+
+| Таблица | Назначение |
+|---|---|
+| `organizations` | привязка `org_id` ↔ `dao_address` ↔ `jetton_address` + отпечаток документа |
+| `members` | волонтёр (`volunteer_id`) ↔ кошелёк, роль (`leader`/`volunteer`), статус |
+| `attestations` | заявленные часы за месяц: `period_month`, `hours`, статус, кто подтвердил |
+| `claims` | начисление BLG: `amount`, `query_id`, `tx_hash`, статус выплаты |
+
+Персональные данные (ФИО, email, телефон) не хранятся: только публичные
+числовые id dobro.ru, TON-адреса и часы. Это осознанное ограничение под
+п. 3.7 политики конфиденциальности портала.

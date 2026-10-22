@@ -9,12 +9,14 @@
     "build": "tsc --noEmit",
     "typecheck": "tsc --noEmit",
     "test": "node --experimental-strip-types --test test/*.test.ts",
-    "verify:deploy": "node scripts/verify-deploy.mjs"
+    "verify:deploy": "node scripts/verify-deploy.mjs",
+    "db:migrate": "node --experimental-strip-types scripts/db-migrate.ts"
   },
   "engines": {
     "node": ">=20"
   },
   "dependencies": {
+    "@neondatabase/serverless": "^1.2.0",
     "@ton/core": "^0.63.1",
     "@vercel/node": "^5.3.0"
   },
