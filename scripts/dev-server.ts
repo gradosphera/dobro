@@ -13,6 +13,9 @@ import { existsSync } from 'node:fs';
 import { extname, join, normalize } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+import authChallenge from '../api/auth-challenge.ts';
+import authMe from '../api/auth-me.ts';
+import authVerify from '../api/auth-verify.ts';
 import hours from '../api/hours.ts';
 import total from '../api/total.ts';
 import verifyOrgDoc from '../api/verify-org-doc.ts';
@@ -29,6 +32,9 @@ const routes: Record<string, Handler> = {
   '/api/total': total as Handler,
   '/api/verify-owner': verifyOwner as Handler,
   '/api/verify-org-doc': verifyOrgDoc as Handler,
+  '/api/auth-challenge': authChallenge as Handler,
+  '/api/auth-verify': authVerify as Handler,
+  '/api/auth-me': authMe as Handler,
 };
 
 const MIME: Record<string, string> = {
@@ -73,8 +79,24 @@ const server = createServer(async (req, res) => {
       },
     };
 
+    let body: unknown;
+    if (req.method === 'POST') {
+      const chunks: Buffer[] = [];
+      for await (const chunk of req) chunks.push(chunk as Buffer);
+      const raw = Buffer.concat(chunks).toString('utf8');
+      if (String(req.headers['content-type'] ?? '').includes('application/json') && raw) {
+        try {
+          body = JSON.parse(raw);
+        } catch {
+          body = raw;
+        }
+      } else {
+        body = raw;
+      }
+    }
+
     try {
-      await handler({ method: req.method, query, headers: req.headers }, vres);
+      await handler({ method: req.method, query, headers: req.headers, body }, vres);
       if (vres.body === undefined && !res.writableEnded) {
         res.statusCode = vres.statusCode;
         res.end();

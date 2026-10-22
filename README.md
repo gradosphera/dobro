@@ -472,3 +472,40 @@ npm run db:migrate
 Персональные данные (ФИО, email, телефон) не хранятся: только публичные
 числовые id dobro.ru, TON-адреса и часы. Это осознанное ограничение под
 п. 3.7 политики конфиденциальности портала.
+
+---
+
+## 9. Вход по кошельку (TON Connect `ton_proof`)
+
+Три эндпоинта, сервер ничего не хранит (stateless):
+
+```http
+POST /api/auth-challenge   { "wallet": "EQ…" }
+  -> { "payload": "v1.…", "wallet": "EQ…", "expiresAt": "…" }
+
+POST /api/auth-verify
+  { "address": "EQ…",
+    "proof": { "timestamp": 1730000000, "domain": "example.com",
+               "payload": "v1.…", "signature": "<base64>" } }
+  -> { "token": "v1.…", "wallet": "EQ…", "expiresAt": "…" }
+
+GET /api/auth-me            Authorization: Bearer <token>
+  -> { "wallet": "EQ…", "expiresAt": "…" }
+```
+
+* `payload` из challenge передаётся в `tonConnectUI.connectWallet({ tonProof })`.
+* Сервер проверяет `ton_proof` по спецификации TON Connect:
+  `sha256(0xffff + "ton-connect" + sha256("ton-proof-item-v2/" + workchain +
+  hash + domainLen + domain + timestamp + payload))`.
+* Публичный ключ берётся **из контракта кошелька** (`get_public_key` через
+  tonapi), а не из тела запроса — иначе подпись подделывается.
+* Домен сверяется с `AUTH_DOMAIN` (список через запятую) или `Host`.
+  Timestamp — окно ±5 минут.
+* Challenge и сессия — HMAC-SHA256 токены на `AUTH_SECRET` (≥16 символов).
+  Без `AUTH_SECRET` auth-эндпоинты отвечают `503`, остальной сервис работает.
+* Ограничение stateless-схемы: challenge нельзя погасить досрочно; окно
+  повтора ограничено временем жизни challenge (10 мин) и timestamp-проверкой.
+
+Переменные окружения: `AUTH_SECRET` (обязательна для auth),
+`AUTH_DOMAIN` (например, `dobro.example.com`), `TONAPI_KEY` (опционально,
+повышает лимиты tonapi).
