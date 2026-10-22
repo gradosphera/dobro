@@ -1,0 +1,21 @@
+{
+  "name": "dobro-hours",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Сканер dobro.ru: общее число зарегистрированных волонтёрских часов по организациям",
+  "scripts": {
+    "dev": "vercel dev",
+    "build": "tsc --noEmit",
+    "typecheck": "tsc --noEmit",
+    "test": "node --experimental-strip-types --test test/*.test.ts"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.2",
+    "@vercel/node": "^5.3.0",
+    "typescript": "^5.7.3"
+  }
+}

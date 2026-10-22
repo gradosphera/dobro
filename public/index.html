@@ -1,0 +1,259 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Добро.ру — зарегистрированные волонтёрские часы</title>
+    <style>
+      :root {
+        --bg: #0f1115;
+        --panel: #171a21;
+        --panel-2: #1e222b;
+        --line: #2a2f3a;
+        --text: #e8eaed;
+        --muted: #9aa2b1;
+        --accent: #ff6b2c;
+        --accent-2: #4e69ff;
+        --ok: #21aa1e;
+        --radius: 14px;
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--text);
+        font: 15px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      }
+      .wrap { max-width: 900px; margin: 0 auto; padding: 40px 20px 80px; }
+      h1 { font-size: 26px; margin: 0 0 6px; letter-spacing: -0.02em; }
+      .sub { color: var(--muted); margin: 0 0 28px; font-size: 14px; }
+      .sub a { color: var(--accent-2); }
+      .card {
+        background: var(--panel);
+        border: 1px solid var(--line);
+        border-radius: var(--radius);
+        padding: 20px;
+        margin-bottom: 18px;
+      }
+      form { display: flex; gap: 10px; flex-wrap: wrap; }
+      input, select, button {
+        font: inherit;
+        border-radius: 10px;
+        border: 1px solid var(--line);
+        padding: 11px 14px;
+        background: var(--panel-2);
+        color: var(--text);
+      }
+      input { flex: 1 1 320px; }
+      input:focus, select:focus { outline: 2px solid var(--accent-2); outline-offset: 1px; }
+      button {
+        background: var(--accent);
+        border-color: transparent;
+        color: #17110b;
+        font-weight: 600;
+        cursor: pointer;
+      }
+      button:disabled { opacity: .6; cursor: progress; }
+      .hint { color: var(--muted); font-size: 12.5px; margin-top: 10px; }
+      .hint code { background: var(--panel-2); padding: 1px 6px; border-radius: 6px; }
+      .hero {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 12px;
+        margin-bottom: 18px;
+      }
+      .stat { background: var(--panel-2); border-radius: 12px; padding: 14px 16px; border: 1px solid var(--line); }
+      .stat .k { color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: .04em; }
+      .stat .v { font-size: 22px; font-weight: 700; margin-top: 4px; font-variant-numeric: tabular-nums; }
+      .big { font-size: 38px; font-weight: 800; font-variant-numeric: tabular-nums; letter-spacing: -0.02em; }
+      .org { border-top: 1px solid var(--line); padding: 18px 0; }
+      .org:first-of-type { border-top: 0; }
+      .org h3 { margin: 0 0 4px; font-size: 17px; }
+      .org .meta { color: var(--muted); font-size: 13px; margin-bottom: 12px; }
+      .chips { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 10px; }
+      .chip {
+        background: var(--panel-2); border: 1px solid var(--line);
+        border-radius: 999px; padding: 4px 11px; font-size: 12.5px;
+        font-variant-numeric: tabular-nums;
+      }
+      .chip.hours { border-color: var(--accent); color: var(--accent); font-weight: 600; }
+      .chip.ok { border-color: var(--ok); color: var(--ok); }
+      .res { color: var(--muted); font-size: 13px; }
+      .res b { color: var(--text); }
+      .badge { font-size: 11px; border: 1px solid var(--ok); color: var(--ok); border-radius: 5px; padding: 1px 6px; }
+      .err { color: #ff8080; }
+      .warn { color: #ffc46b; font-size: 13px; margin-bottom: 12px; }
+      code.k { background: var(--panel-2); padding: 2px 6px; border-radius: 6px; font-size: 13px; }
+      footer { color: var(--muted); font-size: 12.5px; margin-top: 30px; line-height: 1.7; }
+      footer a { color: var(--accent-2); }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <h1>Зарегистрированные волонтёрские часы на dobro.ru</h1>
+      <p class="sub">
+        Поиск организации по названию и извлечение блока «Часы» из карточки
+        (вкладка «Информация» → «Рейтинг» / «Результаты» / «Часы»).
+        Данные: публичный API <a href="https://dobro.ru" target="_blank" rel="noopener">dobro.ru</a>.
+      </p>
+
+      <div class="card">
+        <form id="f">
+          <input id="q" placeholder="Например: Волонтёры-медики" autocomplete="off" required />
+          <select id="limit" title="Сколько совпадений показать">
+            <option value="3">3</option>
+            <option value="5" selected>5</option>
+            <option value="10">10</option>
+          </select>
+          <label class="hint" style="display:flex;align-items:center;gap:6px;margin:0">
+            <input id="rankings" type="checkbox" style="flex:none;width:auto" />
+            места в рейтингах
+          </label>
+          <button id="btn" type="submit">Найти</button>
+        </form>
+        <div class="hint">
+          API: <code>GET /api/hours?q=...</code> · <code>GET /api/total?region=72&amp;year=2025</code>
+        </div>
+      </div>
+
+      <div id="out"></div>
+
+      <footer>
+        Источник данных: открытые эндпоинты dobro.ru
+        (<code>/api/v2/organizers/search</code>, <code>/api/v2/organizations/:id</code>,
+        <code>/api/v2/analytics/get</code>).
+        Число часов — «Количество зарегистрированных часов на портале» из карточки организации.
+        Значения на портале обновляются постоянно, поэтому цифры могут отличаться от снимка.
+      </footer>
+    </div>
+
+    <script>
+      const $ = (id) => document.getElementById(id);
+      const fmt = (n) => (n == null ? '—' : new Intl.NumberFormat('ru-RU').format(Math.round(n)));
+
+      function esc(s) {
+        return String(s ?? '').replace(/[&<>"']/g, (c) =>
+          ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c],
+        );
+      }
+
+      function stripHtml(html) {
+        const d = document.createElement('div');
+        d.innerHTML = html || '';
+        return (d.textContent || '').replace(/\s+/g, ' ').trim();
+      }
+
+      function statCard(k, v, cls = '') {
+        return `<div class="stat"><div class="k">${k}</div><div class="v ${cls}">${v}</div></div>`;
+      }
+
+      async function loadTotal() {
+        try {
+          const r = await fetch('/api/total');
+          const d = await r.json();
+          $('out').insertAdjacentHTML(
+            'afterbegin',
+            `<div class="card">
+               <div style="color:var(--muted);font-size:12px;text-transform:uppercase;letter-spacing:.04em;margin-bottom:10px">
+                 Всего на платформе dobro.ru
+               </div>
+               <div class="big">${fmt(d.hours)}</div>
+               <div class="hero" style="margin-top:14px">
+                 ${statCard('Часов зарегистрировано', fmt(d.hours))}
+                 ${statCard('Из них верифицировано', fmt(d.verifiedHours))}
+                 ${statCard('Доля верифицированных', d.verifiedHoursShare + '%')}
+                 ${statCard('Организаций', fmt(d.organizers))}
+                 ${statCard('Волонтёров', fmt(d.volunteers))}
+               </div>
+             </div>`,
+          );
+        } catch (e) {
+          /* сводка необязательна */
+        }
+      }
+
+      async function search(q, limit, rankings) {
+        const btn = $('btn');
+        btn.disabled = true;
+        btn.textContent = 'Ищу…';
+        try {
+          const params = new URLSearchParams({ q, limit: String(limit) });
+          if (rankings) params.set('rankings', '1');
+          const r = await fetch('/api/hours?' + params);
+          const d = await r.json();
+          if (!r.ok) throw new Error(d.error || r.statusText);
+
+          const cards = d.organizations
+            .map(
+              (o) => `
+            <div class="org">
+              <h3>${esc(o.name)} ${o.verified ? '<span class="badge">верифицирована</span>' : ''}</h3>
+              <div class="meta">
+                ${esc(o.fullName || '')}
+                ${o.location ? ' · ' + esc(o.location) : ''}
+                ${o.settlement ? ' · ' + esc(o.settlement) : ''}
+                · <a href="${esc(o.url)}" target="_blank" rel="noopener">карточка на dobro.ru</a>
+              </div>
+              <div class="chips">
+                <span class="chip hours">Часы: ${fmt(o.hours)}</span>
+                <span class="chip">Волонтёров: ${fmt(o.volunteers)}</span>
+                <span class="chip">С часами: ${fmt(o.volunteersWithHours)}</span>
+                <span class="chip">Рейтинг: ${o.rating ?? '—'} (${fmt(o.ratingCount)})</span>
+                ${
+                  o.placeInRatings
+                    ? `<span class="chip ok">В рейтинге региона: ${esc(
+                        o.placeInRatings.all?.region ?? '—',
+                      )}</span>`
+                    : ''
+                }
+              </div>
+              ${
+                o.results
+                  ? `<div class="res"><b>Результаты:</b> ${esc(stripHtml(o.results).slice(0, 400))}</div>`
+                  : '<div class="res">Результаты: не заполнены</div>'
+              }
+              <div class="hint">Совпадение: ${esc(o.reasons.join(', '))} (${o.score})</div>
+            </div>`,
+            )
+            .join('');
+
+          $('out').insertAdjacentHTML(
+            'afterbegin',
+            `<div class="card">
+              <div style="color:var(--muted);font-size:12px;text-transform:uppercase;letter-spacing:.04em;margin-bottom:10px">
+                Лучшее совпадение
+              </div>
+              <div class="big">${fmt(d.bestMatchHours)}</div>
+              <div style="color:var(--muted);margin-top:4px">
+                ${esc(d.bestMatchName || 'не найдено')} · совпадение ${(d.organizations[0]?.score ?? 0).toFixed(2)}
+              </div>
+              ${
+                d.ambiguous
+                  ? '<div class="warn" style="margin-top:12px">Похожих организаций несколько — проверьте совпадение ниже.</div>'
+                  : ''
+              }
+              ${cards || '<div class="hint">Ничего не найдено.</div>'}
+            </div>`,
+          );
+        } catch (e) {
+          $('out').insertAdjacentHTML(
+            'afterbegin',
+            `<div class="card err">Ошибка: ${esc(e.message)}</div>`,
+          );
+        } finally {
+          btn.disabled = false;
+          btn.textContent = 'Найти';
+        }
+      }
+
+      $('f').addEventListener('submit', (e) => {
+        e.preventDefault();
+        const q = $('q').value.trim();
+        if (q.length < 2) return;
+        search(q, Number($('limit').value), $('rankings').checked);
+      });
+
+      loadTotal();
+    </script>
+  </body>
+</html>
