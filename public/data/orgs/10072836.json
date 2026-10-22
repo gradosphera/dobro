@@ -1,0 +1,19 @@
+{
+  "version": 1,
+  "orgId": 10072836,
+  "name": "КГОО \"ГРАДОСФЕРА\"",
+  "verified": true,
+  "verifiedByEsia": true,
+  "hours": 924.5,
+  "dao": "EQDExlp6EjkVN-OJ1ZcGLEYlITaold5ytBP3e8g6g_BIRaZX",
+  "daoOwner": "EQB7fbZPQ0MGHJt-hGpgAAfQT-tSXm2wMcOSzllnBs-zA3jz",
+  "jetton": "EQBlaryI1HCY6hIlW9giBoqKGtuMHfxlULZOhD6UyzpqLcll",
+  "doc": {
+    "id": "e1efd803-2d15-0857-2416-f9ee9c96708b",
+    "name": "vote.txt",
+    "size": 49,
+    "sha256": "1be8b8a926ff0386327abddc523d7090fd0145c0fa52b557a606a92f73b2d698",
+    "url": "https://storage.yandexcloud.net/dobro-static/prod/docs/e1efd803-2d15-0857-2416-f9ee9c96708b/vote.txt"
+  },
+  "fetchedAt": "2026-10-22T13:42:21.666Z"
+}

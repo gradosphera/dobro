@@ -570,3 +570,38 @@ npm run db:migrate
 # 3) POST /api/attestations
 # 4) GET /api/attestations?org=10072836
 ```
+
+---
+
+## 11. Local-first режим (вариант B)
+
+Решение и обоснование: [`docs/adr/001-local-first.md`](docs/adr/001-local-first.md).
+Серверный слой `api/*` + Neon остаётся в репозитории, но для v1 не нужен:
+ПДн не покидают браузер, данные пишутся в TON.
+
+Почему не «всё в браузере»: `dobro.ru` и `storage.yandexcloud.net` не отдают
+CORS, поэтому публичные данные организации снимаются в снапшот.
+
+```bash
+npm run snapshot -- --org 10072836 --dao EQDExlp6EjkVN-OJ1ZcGLEYlITaold5ytBP3e8g6g_BIRaZX
+```
+
+Пишет `public/data/orgs/<id>.json` (карточка, `owner`, жетон, sha256
+документа с адресом DAO) и `public/data/index.json`. В снапшоте нет ПДн.
+
+Аттестация часов — self-transfer от кошелька лидера с комментарием:
+
+```
+dobro/att/1 o=10072836 v=95490358 p=2026-10 h=12.5 d=1be8b8a926ff0386
+```
+
+* `o` — id организации, `v` — публичный id волонтёра, `p` — месяц,
+  `h` — часы (усекаются до 2 знаков), `d` — первые 16 hex sha256 документа.
+* Длина ≤ 120 байт; кодирование/разбор — `lib/snapshot.ts`.
+* BLG к выплате: `floor(hours)`, 1 BLG за целый час.
+* Читатель берёт историю адреса лидера через `tonapi.io`, фильтрует по
+  префиксу, схлопывает дубликаты по `(org, volunteer, period)` по `lt`.
+* Выплаты — офлайн через highload wallet v3; публичного сервера выплат нет.
+
+Статус: снапшот и формат аттестации готовы (тесты `test/snapshot.test.ts`);
+дальше — TON Connect в статике, on-chain читатель, CLI выплат.
