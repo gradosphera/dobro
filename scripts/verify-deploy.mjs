@@ -43,6 +43,27 @@ console.log(`исходников: ${Object.keys(files).length}`);
 
 const ENTRYPOINTS = ['api/hours.ts', 'api/total.ts'];
 
+// Шаблоны vercel.json -> functions проверяются Vercel по ИСХОДНЫМ путям
+// (api/hours.ts). Шаблон, не совпавший ни с одной функцией, роняет сборку:
+// "The pattern ... doesn't match any Serverless Functions".
+{
+  const vercelJson = JSON.parse(readFileSync(path.join(root, 'vercel.json'), 'utf8'));
+  for (const pattern of Object.keys(vercelJson.functions ?? {})) {
+    const regex = new RegExp(
+      `^${pattern.replace(/[.+^${}()|[\]\\]/g, '\\$&').replace(/\*/g, '[^/]*')}$`,
+    );
+    const matched = ENTRYPOINTS.filter((e) => regex.test(e));
+    if (matched.length === 0) {
+      console.error(
+        `ОШИБКА: шаблон "${pattern}" в vercel.json не совпадает ни с одной функцией ` +
+          `(${ENTRYPOINTS.join(', ')}) — сборка на Vercel упадёт с unused_function`,
+      );
+      process.exit(1);
+    }
+    console.log(`шаблон "${pattern}" -> ${matched.join(', ')}`);
+  }
+}
+
 let lambdaDir;
 let hoursEntry;
 let totalEntry;

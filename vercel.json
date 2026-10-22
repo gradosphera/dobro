@@ -4,10 +4,6 @@
     "api/*.ts": {
       "maxDuration": 10,
       "memory": 1024
-    },
-    "api/*.js": {
-      "maxDuration": 10,
-      "memory": 1024
     }
   },
   "headers": [

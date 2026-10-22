@@ -103,3 +103,22 @@ test('каждый импорт из api/ указывает на файл, ко
     );
   }
 });
+
+test('шаблоны functions в vercel.json совпадают с реальными функциями', () => {
+  const vercelJson = JSON.parse(readFileSync(path.join(root, 'vercel.json'), 'utf8')) as {
+    functions?: Record<string, unknown>;
+  };
+  const entrypoints = sourceFiles('api').map((f) => path.relative(root, f).split(path.sep).join('/'));
+
+  for (const pattern of Object.keys(vercelJson.functions ?? {})) {
+    const regex = new RegExp(
+      `^${pattern.replace(/[.+^${}()|[\]\\]/g, '\\$&').replace(/\*/g, '[^/]*')}$`,
+    );
+    const matched = entrypoints.filter((e) => regex.test(e));
+    assert.ok(
+      matched.length > 0,
+      `шаблон "${pattern}" не совпадает ни с одной функцией (${entrypoints.join(', ')}) — ` +
+        'сборка на Vercel упадёт с unused_function',
+    );
+  }
+});
