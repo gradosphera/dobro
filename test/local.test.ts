@@ -8,6 +8,7 @@ import assert from 'node:assert/strict';
 
 import hours from '../api/hours.ts';
 import total from '../api/total.ts';
+import { getOrganization, getOrganizationFromSsr } from '../lib/dobro.ts';
 import { normalize, scoreMatch } from '../lib/match.ts';
 
 type Handler = (req: unknown, res: unknown) => Promise<unknown>;
@@ -19,6 +20,7 @@ function mockRes() {
     headers: {} as Record<string, string>,
     setHeader(k: string, v: string) {
       this.headers[k] = v;
+      return this;
     },
     status(code: number) {
       this.statusCode = code;
@@ -144,4 +146,64 @@ test('GET /api/hours отдаёт рейтинг и результаты', async
 test('GET /api/hours отклоняет слишком короткий запрос', async () => {
   const res = await call(hours as unknown as Handler, { q: 'а' });
   assert.equal(res.statusCode, 400);
+  assert.ok(res.body && typeof res.body === 'object', 'ответ должен быть JSON-объектом');
+});
+
+test('запасной путь через SSR-разметку отдаёт «Часы»', async () => {
+  const org = await getOrganizationFromSsr(813);
+  assert.ok(org, 'карточка должна была распарситься из __NEXT_DATA__');
+  assert.equal(org!.name, 'Волонтеры-медики | Москва');
+  const hoursValue = org!.organizer?.statistic?.hours;
+  assert.ok(typeof hoursValue === 'number' && hoursValue > 0, 'часы должны быть извлечены из SSR');
+  console.log(`  SSR: ${org!.name} => ${hoursValue} ч`);
+});
+
+test('обработчик /api/hours укладывается в лимит времени', async () => {
+  const started = Date.now();
+  const res = await call(hours as unknown as Handler, { q: 'Волонтеры-медики', limit: '3' });
+  const elapsed = Date.now() - started;
+  assert.equal(res.statusCode, 200);
+  assert.ok(elapsed < 20_000, `обработчик занял ${elapsed} мс — платформа успеет убить инстанс`);
+  const body = res.body as { elapsedMs: number; partial: boolean };
+  assert.equal(typeof body.elapsedMs, 'number');
+  assert.equal(typeof body.partial, 'boolean');
+  console.log(`  обработчик отработал за ${elapsed} мс`);
+});
+
+test('GET /api/hours отдаёт JSON даже при ошибке', async () => {
+  const res = await call(hours as unknown as Handler, { q: 'организация-которой-не-существует-12345' });
+  assert.ok(res.statusCode === 200 || res.statusCode === 502, `неожиданный код ${res.statusCode}`);
+  assert.ok(res.body && typeof res.body === 'object', 'ответ должен быть JSON-объектом');
+});
+
+test('если JSON-API недоступен, карточка берётся из SSR-разметки', async () => {
+  const original = globalThis.fetch;
+  globalThis.fetch = (async (input: unknown, init?: unknown) => {
+    const url = String(typeof input === 'string' ? input : (input as { url?: string })?.url ?? '');
+    if (url.includes('/api/v2/organizations/')) {
+      return new Response('blocked by WAF', { status: 403 });
+    }
+    return original(input as string, init as RequestInit);
+  }) as typeof fetch;
+
+  try {
+    const org = await getOrganization(813, {});
+    assert.ok(org, 'карточка должна была прийти из SSR-разметки');
+    assert.ok((org!.organizer?.statistic?.hours ?? 0) > 0, 'часы должны быть извлечены из SSR');
+    console.log(`  fallback: ${org!.name} => ${org!.organizer?.statistic?.hours} ч`);
+  } finally {
+    globalThis.fetch = original;
+  }
+});
+
+test('опциональные параметры detail и rankings не ломают ответ', async () => {
+  const res = await call(hours as unknown as Handler, {
+    q: 'Волонтеры-медики',
+    limit: '2',
+    detail: '2',
+    rankings: '1',
+  });
+  assert.equal(res.statusCode, 200);
+  const body = res.body as { organizations: unknown[] };
+  assert.ok(body.organizations.length <= 2);
 });

@@ -147,10 +147,38 @@
         return `<div class="stat"><div class="k">${k}</div><div class="v ${cls}">${v}</div></div>`;
       }
 
+      /**
+       * Безопасный разбор ответа: сервер может вернуть не JSON
+       * (например, страницу ошибки Vercel «A server error has occurred...»),
+       * и тогда обычный res.json() падает с невнятным SyntaxError.
+       */
+      async function readJson(res) {
+        const text = await res.text();
+        let data = null;
+        try {
+          data = JSON.parse(text);
+        } catch {
+          const snippet = text.trim().slice(0, 140).replace(/\s+/g, ' ');
+          const kind = res.ok
+            ? 'Сервер вернул ответ не в формате JSON'
+            : `Сервер вернул HTTP ${res.status}`;
+          throw new Error(
+            `${kind}: ${snippet || '(пустой ответ)'}. ` +
+              (res.status >= 500
+                ? 'Похоже, функция упала или не уложилась в лимит времени. Подробности — в логах деплоя Vercel.'
+                : 'Проверьте параметры запроса.'),
+          );
+        }
+        if (!res.ok) {
+          throw new Error(data?.error || `Сервер вернул HTTP ${res.status}`);
+        }
+        return data;
+      }
+
       async function loadTotal() {
         try {
           const r = await fetch('/api/total');
-          const d = await r.json();
+          const d = await readJson(r);
           $('out').insertAdjacentHTML(
             'afterbegin',
             `<div class="card">
@@ -168,7 +196,12 @@
              </div>`,
           );
         } catch (e) {
-          /* сводка необязательна */
+          $('out').insertAdjacentHTML(
+            'afterbegin',
+            `<div class="card warn">
+               <b>Сводка по платформе недоступна.</b> ${esc(e.message)}
+             </div>`,
+          );
         }
       }
 
@@ -180,8 +213,7 @@
           const params = new URLSearchParams({ q, limit: String(limit) });
           if (rankings) params.set('rankings', '1');
           const r = await fetch('/api/hours?' + params);
-          const d = await r.json();
-          if (!r.ok) throw new Error(d.error || r.statusText);
+          const d = await readJson(r);
 
           const cards = d.organizations
             .map(

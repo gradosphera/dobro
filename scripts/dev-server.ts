@@ -49,6 +49,7 @@ const server = createServer(async (req, res) => {
       body: undefined as unknown,
       setHeader(k: string, v: string) {
         res.setHeader(k, v);
+        return this;
       },
       status(code: number) {
         this.statusCode = code;

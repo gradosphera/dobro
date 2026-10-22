@@ -2,7 +2,7 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "functions": {
     "api/*.ts": {
-      "maxDuration": 30,
+      "maxDuration": 10,
       "memory": 1024
     }
   },
@@ -11,7 +11,7 @@
       "source": "/api/(.*)",
       "headers": [
         { "key": "Access-Control-Allow-Origin", "value": "*" },
-        { "key": "Cache-Control", "value": "public, max-age=60, stale-while-revalidate=600" }
+        { "key": "Access-Control-Allow-Methods", "value": "GET, OPTIONS" }
       ]
     }
   ]

@@ -13,9 +13,11 @@
   "engines": {
     "node": ">=20"
   },
+  "dependencies": {
+    "@vercel/node": "^5.3.0"
+  },
   "devDependencies": {
     "@types/node": "^22.10.2",
-    "@vercel/node": "^5.3.0",
     "typescript": "^5.7.3"
   }
 }
