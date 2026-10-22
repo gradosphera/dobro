@@ -509,3 +509,64 @@ GET /api/auth-me            Authorization: Bearer <token>
 Переменные окружения: `AUTH_SECRET` (обязательна для auth),
 `AUTH_DOMAIN` (например, `dobro.example.com`), `TONAPI_KEY` (опционально,
 повышает лимиты tonapi).
+
+---
+
+## 10. Привязка организации и аттестации
+
+### 10.1 `POST /api/bind` — закрепить связку
+
+Требует `Authorization: Bearer <session>` (см. раздел 9) и `DATABASE_URL`.
+
+```json
+{ "orgId": 10072836, "dao": "EQDExlp6EjkVN-OJ1ZcGLEYlITaold5ytBP3e8g6g_BIRaZX" }
+```
+
+Проверки: организация верифицирована на dobro.ru; кошелёк сессии — `owner`
+DAO (свежее состояние из сети); адрес DAO найден в документе организации
+(слой B). Пишутся `organizations` (DAO, owner, жетон, отпечаток документа) и
+`members` (лидер). `admin` жетона сверяется с owner и возвращается как
+`checks.jettonMatchesOwner`: для BLG это `false` (админ — мультисиг фонда),
+для будущего per-org BLGT должно быть `true`.
+
+### 10.2 `POST /api/attestations` — внести часы
+
+Лидер вносит подтверждённые часы за месяц; запись сразу `approved`.
+
+```json
+{
+  "orgId": 10072836,
+  "volunteerId": 95490358,
+  "wallet": "EQ…",
+  "period": "2026-10",
+  "hours": 12.5,
+  "proofUrl": "https://dobro.ru/…"
+}
+```
+
+* `period` нормализуется к первому числу месяца; `hours` — до `744`.
+* Клейм создаётся на `floor(hours)` BLG: `12.5 ч → 12 BLG`, `0.5 ч → 0`
+  (аттестация сохраняется, клейм не создаётся).
+* Идемпотентно: повтор за тот же `(orgId, volunteerId, месяц)` возвращает
+  существующую запись (`created: false`, HTTP 200).
+* Модель доверия v1: лидер (owner DAO) отвечает за соответствие
+  `volunteerId ↔ wallet`; публичного списка волонтёров с кошельками у
+  dobro.ru нет.
+
+### 10.3 `GET /api/attestations?org=<id>`
+
+Публичный список: часы, статус, `claimAmount`, `tx_hash`, итоги по
+организации. Кэш 30 с. Без `DATABASE_URL` эндпоинт отвечает `503`.
+
+### 10.4 Проверка после подключения Neon
+
+```bash
+export DATABASE_URL='postgres://…'
+export AUTH_SECRET="$(openssl rand -hex 32)"
+npm run db:migrate
+
+# 1) получить challenge и подписать его кошельком-лидером (Tonkeeper и т.п.)
+# 2) POST /api/bind
+# 3) POST /api/attestations
+# 4) GET /api/attestations?org=10072836
+```

@@ -13,9 +13,11 @@ import { existsSync } from 'node:fs';
 import { extname, join, normalize } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+import attestations from '../api/attestations.ts';
 import authChallenge from '../api/auth-challenge.ts';
 import authMe from '../api/auth-me.ts';
 import authVerify from '../api/auth-verify.ts';
+import bind from '../api/bind.ts';
 import hours from '../api/hours.ts';
 import total from '../api/total.ts';
 import verifyOrgDoc from '../api/verify-org-doc.ts';
@@ -35,6 +37,8 @@ const routes: Record<string, Handler> = {
   '/api/auth-challenge': authChallenge as Handler,
   '/api/auth-verify': authVerify as Handler,
   '/api/auth-me': authMe as Handler,
+  '/api/bind': bind as Handler,
+  '/api/attestations': attestations as Handler,
 };
 
 const MIME: Record<string, string> = {
