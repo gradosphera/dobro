@@ -12,7 +12,7 @@ import {
   normalizeHours,
   type OrgSnapshot,
 } from '../lib/snapshot.ts';
-import { textCommentPayload } from '../lib/ton-comment.ts';
+import { textCommentPayload, toFriendlyAddress } from '../lib/ton-comment.ts';
 
 const ORG_ID = Number(new URL(location.href).searchParams.get('org') ?? 10072836);
 const TON_VOTE = 'https://api.ton.vote';
@@ -296,7 +296,7 @@ async function submit(event: SubmitEvent): Promise<void> {
       validUntil: Math.floor(Date.now() / 1000) + VALID_FOR_SECONDS,
       messages: [
         {
-          address: wallet.account.address,
+          address: toFriendlyAddress(wallet.account.address),
           amount: SELF_TX_AMOUNT,
           payload: textCommentPayload(comment),
         },

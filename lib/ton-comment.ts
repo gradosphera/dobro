@@ -3,7 +3,12 @@
  * Используется для on-chain аттестаций; сборка BOC — через @ton/core.
  */
 
-import { beginCell, Cell } from '@ton/core';
+import { Address, beginCell, Cell } from '@ton/core';
+
+/** Raw-адрес TON Connect (`0:…`) -> user-friendly (`EQ…`), как требует sendTransaction. */
+export function toFriendlyAddress(input: string): string {
+  return Address.parse(input).toString({ bounceable: true, urlSafe: true });
+}
 
 export function textCommentPayload(text: string): string {
   return beginCell().storeUint(0, 32).storeStringTail(text).endCell().toBoc().toString('base64');
