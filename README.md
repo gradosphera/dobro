@@ -484,8 +484,9 @@ POST /api/auth-challenge   { "wallet": "EQ…" }
   -> { "payload": "v1.…", "wallet": "EQ…", "expiresAt": "…" }
 
 POST /api/auth-verify
-  { "address": "EQ…",
-    "proof": { "timestamp": 1730000000, "domain": "example.com",
+  { "address": "EQ…", "network": "-239",
+    "proof": { "timestamp": 1730000000,
+               "domain": { "value": "example.com", "lengthBytes": 11 },
                "payload": "v1.…", "signature": "<base64>" } }
   -> { "token": "v1.…", "wallet": "EQ…", "expiresAt": "…" }
 
@@ -497,18 +498,26 @@ GET /api/auth-me            Authorization: Bearer <token>
 * Сервер проверяет `ton_proof` по спецификации TON Connect:
   `sha256(0xffff + "ton-connect" + sha256("ton-proof-item-v2/" + workchain +
   hash + domainLen + domain + timestamp + payload))`.
+* `domain` приходит объектом `{ value, lengthBytes }` (TON Connect v2+);
+  строковый вид поддерживается для совместимости. `lengthBytes` сверяется
+  с фактической длиной.
+* Лимиты TON Connect: domain ≤128 байт, payload ≤128 байт, вместе ≤222.
+  Challenge — компактный бинарный токен на 89 байт.
 * Публичный ключ берётся **из контракта кошелька** (`get_public_key` через
-  tonapi), а не из тела запроса — иначе подпись подделывается.
-* Домен сверяется с `AUTH_DOMAIN` (список через запятую) или `Host`.
-  Timestamp — окно ±5 минут.
-* Challenge и сессия — HMAC-SHA256 токены на `AUTH_SECRET` (≥16 символов).
-  Без `AUTH_SECRET` auth-эндпоинты отвечают `503`, остальной сервис работает.
+  tonapi), а не из тела запроса — иначе подпись подделывается. Это же
+  покрывает WalletTg/Telegram Wallet, где ключ может ротироваться.
+* Домен сверяется с `AUTH_DOMAIN` (список через запятую) или `Host`
+  (порт сохраняется, регистр не важен). Timestamp — окно ±5 минут.
+* Сеть: `-239` (mainnet) по умолчанию; список задаётся `AUTH_NETWORKS`.
+* Challenge и сессия — компактные HMAC-SHA256 токены на `AUTH_SECRET`
+  (≥16 символов). Без `AUTH_SECRET` auth-эндпоинты отвечают `503`,
+  остальной сервис работает.
 * Ограничение stateless-схемы: challenge нельзя погасить досрочно; окно
   повтора ограничено временем жизни challenge (10 мин) и timestamp-проверкой.
 
 Переменные окружения: `AUTH_SECRET` (обязательна для auth),
-`AUTH_DOMAIN` (например, `dobro.example.com`), `TONAPI_KEY` (опционально,
-повышает лимиты tonapi).
+`AUTH_DOMAIN` (например, `dobro.example.com`), `AUTH_NETWORKS`
+(по умолчанию `-239`), `TONAPI_KEY` (опционально, повышает лимиты tonapi).
 
 ---
 
@@ -636,6 +645,11 @@ SITE_URL=https://ваш-домен npm run build:web
 4. `sendTransaction` — self-transfer на 0.01 TON с комментарием
    `dobro/att/1 …`; комиссию платит лидер, остаток возвращается.
 5. После отправки показывается комментарий и ссылка на историю кошелька.
+
+Используется `@tonconnect/ui` 5.0.1: сеть принудительно mainnet
+(`setConnectionNetwork('-239')`), аналитика/телеметрия выключена
+(`analytics: { mode: 'off' }`), интерфейс на русском в тёмной теме,
+обрабатываются `connectionRestored` и `UserRejectsError`.
 
 Ограничения: owner DAO — единственный, кто может писать; тестнет
 отключён (DAO mainnet); TON Connect UI поставляется локально, без CDN.

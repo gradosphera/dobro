@@ -18,7 +18,14 @@ import {
   verifyChallenge,
   verifySession,
 } from '../lib/auth.ts';
-import { tonProofDigest, verifyTonProofSignature } from '../lib/tonproof.ts';
+import {
+  MAX_DOMAIN_BYTES,
+  MAX_PAYLOAD_BYTES,
+  parseProofDomain,
+  tonProofDigest,
+  tonProofMessage,
+  verifyTonProofSignature,
+} from '../lib/tonproof.ts';
 
 const ADDRESS = 'EQDExlp6EjkVN-OJ1ZcGLEYlITaold5ytBP3e8g6g_BIRaZX';
 const DOMAIN = 'example.test';
@@ -106,6 +113,10 @@ test('challenge и сессия подписаны и привязаны к ко
   try {
     const challenge = createChallenge(ADDRESS);
     verifyChallenge(challenge.token, ADDRESS);
+    assert.ok(
+      Buffer.byteLength(challenge.token, 'utf8') <= 128,
+      `challenge не должен превышать лимит ton_proof: ${Buffer.byteLength(challenge.token)}`,
+    );
 
     const other = 'EQBlaryI1HCY6hIlW9giBoqKGtuMHfxlULZOhD6UyzpqLcll';
     assert.throws(() => verifyChallenge(challenge.token, other), AuthError);
@@ -165,7 +176,13 @@ test('полный вход: challenge -> ton_proof -> session -> /api/auth-me',
 
     const verifyRes = await call(authVerify as unknown as Handler, 'POST', {
       address: ADDRESS,
-      proof: { timestamp, domain: DOMAIN, payload, signature },
+      network: '-239',
+      proof: {
+        timestamp,
+        domain: { value: DOMAIN, lengthBytes: Buffer.byteLength(DOMAIN) },
+        payload,
+        signature,
+      },
     });
     assert.equal(verifyRes.statusCode, 200);
     const { token } = verifyRes.body as { token: string };
@@ -192,10 +209,61 @@ test('полный вход: challenge -> ton_proof -> session -> /api/auth-me',
       proof: { timestamp, domain: 'evil.test', payload, signature },
     });
     assert.equal(wrongDomain.statusCode, 401);
+
+    const wrongLength = await call(authVerify as unknown as Handler, 'POST', {
+      address: ADDRESS,
+      proof: {
+        timestamp,
+        domain: { value: DOMAIN, lengthBytes: Buffer.byteLength(DOMAIN) + 1 },
+        payload,
+        signature,
+      },
+    });
+    assert.equal(wrongLength.statusCode, 400);
+
+    const testnet = await call(authVerify as unknown as Handler, 'POST', {
+      address: ADDRESS,
+      network: '-3',
+      proof: { timestamp, domain: DOMAIN, payload, signature },
+    });
+    assert.equal(testnet.statusCode, 401);
   } finally {
     globalThis.fetch = originalFetch;
     restore();
   }
+});
+
+test('ton_proof: домен объектом и лимиты payload', () => {
+  assert.deepEqual(parseProofDomain({ value: 'example.test', lengthBytes: 12 }), {
+    value: 'example.test',
+    lengthBytes: 12,
+  });
+  assert.deepEqual(parseProofDomain('example.test'), {
+    value: 'example.test',
+    lengthBytes: null,
+  });
+  assert.equal(parseProofDomain({ value: '', lengthBytes: 0 }), null);
+  assert.equal(parseProofDomain(42), null);
+
+  const base = {
+    address: ADDRESS,
+    domain: 'example.test',
+    timestamp: 1_730_000_000,
+    payload: 'nonce-123',
+  };
+  const longDomain = 'a'.repeat(MAX_DOMAIN_BYTES + 1);
+  assert.throws(() => tonProofMessage({ ...base, domain: longDomain }), /Домен длиннее/);
+  assert.throws(
+    () => tonProofMessage({ ...base, payload: 'x'.repeat(MAX_PAYLOAD_BYTES + 1) }),
+    /Payload длиннее/,
+  );
+  assert.throws(
+    () => tonProofMessage({ ...base, domainLength: 3 }),
+    /domain.lengthBytes/,
+  );
+
+  const message = tonProofMessage({ ...base, domainLength: Buffer.byteLength(base.domain) });
+  assert.ok(message.includes(Buffer.from(base.domain, 'utf8')));
 });
 
 test('auth: некорректный кошелёк и методы', async () => {

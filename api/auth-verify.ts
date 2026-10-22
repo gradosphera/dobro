@@ -28,8 +28,10 @@ import {
   verifyChallenge,
 } from '../lib/auth.ts';
 import {
+  MAX_PAYLOAD_BYTES,
   TonProofError,
   getWalletPublicKey,
+  parseProofDomain,
   verifyTonProofSignature,
 } from '../lib/tonproof.ts';
 import { normalizeTonAddress } from '../lib/ton.ts';
@@ -48,7 +50,15 @@ function body(req: VercelRequest): Record<string, unknown> {
 }
 
 function normalizeDomain(value: string): string {
-  return value.trim().toLowerCase().replace(/:\d+$/, '');
+  return value.trim().toLowerCase();
+}
+
+function allowedNetworks(): string[] {
+  const fromEnv = (process.env.AUTH_NETWORKS ?? '')
+    .split(',')
+    .map((item) => item.trim())
+    .filter(Boolean);
+  return fromEnv.length > 0 ? fromEnv : ['-239'];
 }
 
 function expectedDomains(req: VercelRequest): string[] {
@@ -95,9 +105,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(400).json({ error: 'Укажите корректный address' });
   }
 
+  const network = String(data.network ?? '-239');
+  if (!allowedNetworks().includes(network)) {
+    return res.status(401).json({ error: `Сеть не поддерживается: ${network}` });
+  }
+
   const proof = (data.proof ?? {}) as Record<string, unknown>;
   const timestamp = Number(proof.timestamp);
-  const domain = typeof proof.domain === 'string' ? normalizeDomain(proof.domain) : '';
+  const parsedDomain = parseProofDomain(proof.domain);
+  const domain = parsedDomain ? normalizeDomain(parsedDomain.value) : '';
+  const domainLength = parsedDomain?.lengthBytes ?? null;
   const payload = typeof proof.payload === 'string' ? proof.payload : '';
   const signature = decodeSignature(proof.signature);
 
@@ -107,8 +124,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (!domain) {
     return res.status(400).json({ error: 'В proof отсутствует domain' });
   }
-  if (!payload || payload.length > 4096) {
-    return res.status(400).json({ error: 'В proof отсутствует payload' });
+  if (!payload || Buffer.byteLength(payload, 'utf8') > MAX_PAYLOAD_BYTES) {
+    return res.status(400).json({ error: 'В proof отсутствует корректный payload' });
+  }
+  if (domainLength !== null && Buffer.byteLength(domain, 'utf8') !== domainLength) {
+    return res.status(400).json({ error: 'domain.lengthBytes не совпадает с domain' });
   }
   if (!signature) {
     return res.status(400).json({ error: 'В proof отсутствует корректная signature' });
@@ -134,7 +154,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     verifyChallenge(payload, address);
     const publicKey = await getWalletPublicKey(address);
     const ok = verifyTonProofSignature(
-      { address, domain, timestamp, payload },
+      { address, domain, domainLength: domainLength ?? undefined, timestamp, payload },
       signature,
       publicKey,
     );

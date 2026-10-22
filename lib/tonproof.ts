@@ -27,6 +27,9 @@ import { cached } from './cache.ts';
 import { normalizeTonAddress, parseTonAddress } from './ton.ts';
 
 export const TONAPI_URL = process.env.TONAPI_URL ?? 'https://tonapi.io';
+export const MAX_DOMAIN_BYTES = 128;
+export const MAX_PAYLOAD_BYTES = 128;
+export const MAX_DOMAIN_AND_PAYLOAD_BYTES = 222;
 const PUBLIC_KEY_TTL_MS = 5 * 60 * 1000;
 const USER_AGENT = 'dobro-dao-bot/1.0 (+https://github.com/gradosphera/dobro)';
 
@@ -49,9 +52,39 @@ export class TonProofError extends Error {
 export interface TonProofPayload {
   address: string;
   domain: string;
+  /** Длина домена в байтах из TON Connect (`domain.lengthBytes`). */
+  domainLength?: number;
   /** Unix-время в секундах. */
   timestamp: number;
   payload: string;
+}
+
+export interface ParsedProofDomain {
+  value: string;
+  lengthBytes: number | null;
+}
+
+/**
+ * TON Connect (v2+) присылает domain объектом `{ value, lengthBytes }`,
+ * старые клиенты — строкой. Поддерживаем оба вида.
+ */
+export function parseProofDomain(input: unknown): ParsedProofDomain | null {
+  if (typeof input === 'string') {
+    const value = input.trim();
+    return value ? { value, lengthBytes: null } : null;
+  }
+  if (input && typeof input === 'object') {
+    const raw = input as { value?: unknown; lengthBytes?: unknown };
+    if (typeof raw.value !== 'string' || !raw.value.trim()) return null;
+    const lengthBytes =
+      typeof raw.lengthBytes === 'number' &&
+      Number.isInteger(raw.lengthBytes) &&
+      raw.lengthBytes >= 0
+        ? raw.lengthBytes
+        : null;
+    return { value: raw.value.trim(), lengthBytes };
+  }
+  return null;
 }
 
 /** Внутреннее сообщение до хеширования (для тестов и отладки). */
@@ -63,6 +96,27 @@ export function tonProofMessage(input: TonProofPayload): Buffer {
   }
 
   const domain = Buffer.from(input.domain, 'utf8');
+  const payload = Buffer.from(input.payload, 'utf8');
+
+  if (domain.length > MAX_DOMAIN_BYTES) {
+    throw new TonProofError(`Домен длиннее ${MAX_DOMAIN_BYTES} байт`, 400);
+  }
+  if (payload.length > MAX_PAYLOAD_BYTES) {
+    throw new TonProofError(`Payload длиннее ${MAX_PAYLOAD_BYTES} байт`, 400);
+  }
+  if (domain.length + payload.length > MAX_DOMAIN_AND_PAYLOAD_BYTES) {
+    throw new TonProofError(
+      `domain + payload длиннее ${MAX_DOMAIN_AND_PAYLOAD_BYTES} байт`,
+      400,
+    );
+  }
+  if (input.domainLength !== undefined && input.domainLength !== domain.length) {
+    throw new TonProofError(
+      `domain.lengthBytes=${input.domainLength}, фактически ${domain.length}`,
+      400,
+    );
+  }
+
   const workchain = Buffer.alloc(4);
   workchain.writeInt32BE(address.workChain, 0);
   const domainLength = Buffer.alloc(4);
@@ -77,7 +131,7 @@ export function tonProofMessage(input: TonProofPayload): Buffer {
     domainLength,
     domain,
     timestamp,
-    Buffer.from(input.payload, 'utf8'),
+    payload,
   ]);
 }
 

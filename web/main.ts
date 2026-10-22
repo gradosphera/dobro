@@ -26,6 +26,8 @@ interface Wallet {
 interface TonConnectUIInstance {
   account: Wallet['account'] | null;
   connected: boolean;
+  uiOptions: Record<string, unknown>;
+  setConnectionNetwork(chainId: string | undefined): void;
   onStatusChange(callback: (wallet: Wallet | null) => void): () => void;
   sendTransaction(tx: {
     validUntil: number;
@@ -36,7 +38,11 @@ interface TonConnectUIInstance {
 declare global {
   interface Window {
     TON_CONNECT_UI?: {
-      TonConnectUI: new (options: { manifestUrl: string; buttonRootId?: string }) => TonConnectUIInstance;
+      TonConnectUI: new (options: {
+        manifestUrl: string;
+        buttonRootId?: string;
+        analytics?: { mode: 'off' | 'telemetry' | 'full' };
+      }) => TonConnectUIInstance;
     };
   }
 }
@@ -201,7 +207,20 @@ function initTonConnect(): void {
 
   try {
     const manifestUrl = new URL('tonconnect-manifest.json', location.href).href;
-    tonConnect = new lib.TonConnectUI({ manifestUrl, buttonRootId: 'ton-connect' });
+    tonConnect = new lib.TonConnectUI({
+      manifestUrl,
+      buttonRootId: 'ton-connect',
+      analytics: { mode: 'off' },
+    });
+    tonConnect.uiOptions = {
+      language: 'ru',
+      uiPreferences: { theme: 'DARK', borderRadius: 's' },
+    };
+    try {
+      tonConnect.setConnectionNetwork('-239');
+    } catch {
+      // сессия уже восстановлена — сеть проверим по account.chain
+    }
     tonConnect.onStatusChange((next) => {
       wallet = next;
       renderWallet();
@@ -301,7 +320,12 @@ async function submit(event: SubmitEvent): Promise<void> {
     link.textContent = ' история кошелька';
     status.append(link);
   } catch (err) {
-    setStatus(`Не отправлено: ${err instanceof Error ? err.message : String(err)}`, 'err');
+    const name = err && typeof err === 'object' ? (err as { name?: string }).name : '';
+    const message = err instanceof Error ? err.message : String(err);
+    setStatus(
+      name === 'UserRejectsError' ? 'Вы отклонили подпись в кошельке.' : `Не отправлено: ${message}`,
+      'err',
+    );
   } finally {
     send.disabled = !canSend();
   }
