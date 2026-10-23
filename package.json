@@ -13,7 +13,9 @@
     "db:migrate": "node --experimental-strip-types scripts/db-migrate.ts",
     "snapshot": "node --experimental-strip-types scripts/snapshot.ts",
     "build:web": "node scripts/build-web.mjs",
-    "payouts:build": "node --experimental-strip-types scripts/payouts.ts"
+    "payouts:build": "node --experimental-strip-types scripts/payouts.ts",
+    "highload:deploy": "node --experimental-strip-types scripts/highload-deploy.ts",
+    "payouts:batch": "node --experimental-strip-types scripts/payout-batch.ts"
   },
   "engines": {
     "node": ">=20"

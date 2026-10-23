@@ -25,6 +25,7 @@
     "lib/**/*.ts",
     "test/**/*.ts",
     "web/**/*.ts",
-    "scripts/**/*.ts"
+    "scripts/**/*.ts",
+    "contracts/**/*.ts"
   ]
 }
