@@ -41,10 +41,11 @@ async function main() {
   if (!owner) throw new Error('В снапшоте нет daoOwner: укажите --owner EQ…');
 
   const maxTransactions = positiveInt(arg('max-tx'), 2_000);
+  const limit = Math.min(positiveInt(arg('limit'), 20), 100);
   console.log(`org ${orgId}  period ${period}  owner ${owner}`);
-  console.log(`читаю историю owner (до ${maxTransactions} транзакций)…`);
+  console.log(`читаю историю owner (до ${maxTransactions} транзакций, по ${limit})…`);
 
-  const transactions = await fetchAccountTransactions(owner, { maxTransactions });
+  const transactions = await fetchAccountTransactions(owner, { maxTransactions, limit });
   const plan = buildPayoutPlan({ transactions, owner, orgId, period });
   const output = {
     ...plan,
