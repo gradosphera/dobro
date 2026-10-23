@@ -27,18 +27,23 @@ await copyFile(
   'public/vendor/tonconnect-ui.min.js',
 );
 
-await build({
-  entryPoints: ['web/main.ts'],
-  outfile: 'public/js/app.js',
-  bundle: true,
-  format: 'esm',
-  platform: 'browser',
-  target: ['es2020'],
-  minify: true,
-  legalComments: 'none',
-  inject: ['web/buffer-shim.ts'],
-  logLevel: 'info',
-});
+for (const [entry, outfile] of [
+  ['web/main.ts', 'public/js/app.js'],
+  ['web/claim.ts', 'public/js/claim.js'],
+]) {
+  await build({
+    entryPoints: [entry],
+    outfile,
+    bundle: true,
+    format: 'esm',
+    platform: 'browser',
+    target: ['es2020'],
+    minify: true,
+    legalComments: 'none',
+    inject: ['web/buffer-shim.ts'],
+    logLevel: 'info',
+  });
+}
 
 const manifest = {
   url: siteUrl,

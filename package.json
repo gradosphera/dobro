@@ -12,7 +12,8 @@
     "verify:deploy": "node scripts/verify-deploy.mjs",
     "db:migrate": "node --experimental-strip-types scripts/db-migrate.ts",
     "snapshot": "node --experimental-strip-types scripts/snapshot.ts",
-    "build:web": "node scripts/build-web.mjs"
+    "build:web": "node scripts/build-web.mjs",
+    "payouts:build": "node --experimental-strip-types scripts/payouts.ts"
   },
   "engines": {
     "node": ">=20"
