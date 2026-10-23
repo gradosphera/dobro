@@ -1,0 +1,9 @@
+{
+  "version": 1,
+  "overrides": {
+    "10072836:97062745:2026-10": {
+      "recipient": "UQB_mshOVfu3KjurAFiusAJRfBG0RaZ_yn8yk3j29d_z6HVG",
+      "reason": "адрес подтверждён пользователем 2026-10-23; claim sender отличается"
+    }
+  }
+}

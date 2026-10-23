@@ -16,7 +16,7 @@ import {
   decodeAttestation,
   type AttestationPayload,
 } from './snapshot.ts';
-import { normalizeTonAddress, sameTonAddress } from './ton.ts';
+import { normalizeTonAddress, parseTonAddress, sameTonAddress } from './ton.ts';
 import type { ChainTransaction } from './chain-transactions.ts';
 
 export interface AttestationEvent extends AttestationPayload {
@@ -41,12 +41,23 @@ export interface ExtractResult {
   skipped: number;
 }
 
+export interface RecipientOverride {
+  recipient: string;
+  reason?: string;
+}
+
+export type RecipientOverrides = Record<string, RecipientOverride | string>;
+
 export interface Payout {
   key: string;
   orgId: number;
   volunteerId: number;
   period: string;
   recipient: string;
+  recipientRaw?: string;
+  claimRecipient?: string;
+  recipientSource?: 'claim' | 'override';
+  recipientReason?: string;
   hours: number;
   amount: number;
   attestationTx: string;
@@ -60,7 +71,8 @@ export type PayoutIssueKind =
   | 'duplicate-attestation'
   | 'duplicate-claim'
   | 'claim-without-attestation'
-  | 'zero-amount';
+  | 'zero-amount'
+  | 'recipient-override';
 
 export interface PayoutIssue {
   kind: PayoutIssueKind;
@@ -199,9 +211,20 @@ export function buildPayoutPlan(input: {
   orgId: number;
   period: string;
   now?: Date;
+  overrides?: RecipientOverrides;
 }): PayoutPlan {
   const { transactions, owner, orgId, period } = input;
   const extracted = extractPayoutEvents(transactions, owner);
+
+  const overrides = new Map<string, RecipientOverride>();
+  for (const [key, value] of Object.entries(input.overrides ?? {})) {
+    const raw = typeof value === 'string' ? value : value.recipient;
+    if (!normalizeTonAddress(raw)) throw new Error(`Некорректный адрес в overrides[${key}]: ${raw}`);
+    overrides.set(key, {
+      recipient: raw.trim(),
+      reason: typeof value === 'string' ? undefined : value.reason,
+    });
+  }
 
   const attestations = extracted.attestations.filter(
     (item) => item.orgId === orgId && item.period === period,
@@ -259,6 +282,7 @@ export function buildPayoutPlan(input: {
 
   const payouts: Payout[] = [];
   const unclaimed: PayoutPlan['unclaimed'] = [];
+  const usedOverrides = new Set<string>();
   let totalHours = 0;
 
   for (const [key, attestation] of latestAttestation) {
@@ -281,13 +305,31 @@ export function buildPayoutPlan(input: {
       continue;
     }
 
+    const override = overrides.get(key);
+    if (override) {
+      usedOverrides.add(key);
+      issues.push({
+        kind: 'recipient-override',
+        key,
+        detail:
+          `claim ${claim.recipient} → ${override.recipient}` +
+          (override.reason ? ` (${override.reason})` : ''),
+      });
+    }
+
+    const recipient = override?.recipient ?? claim.recipient;
+
     totalHours += attestation.hours;
     payouts.push({
       key,
       orgId: attestation.orgId,
       volunteerId: attestation.volunteerId,
       period: attestation.period,
-      recipient: claim.recipient,
+      recipient,
+      recipientRaw: parseTonAddress(recipient)?.toRawString(),
+      claimRecipient: claim.recipient,
+      recipientSource: override ? 'override' : 'claim',
+      ...(override?.reason ? { recipientReason: override.reason } : {}),
       hours: attestation.hours,
       amount,
       attestationTx: attestation.txHash,
@@ -296,6 +338,11 @@ export function buildPayoutPlan(input: {
       claimLt: claim.lt,
       claimedAt: new Date(claim.time * 1000).toISOString(),
     });
+  }
+
+  const unusedOverrides = [...overrides.keys()].filter((key) => !usedOverrides.has(key));
+  if (unusedOverrides.length > 0) {
+    throw new Error(`Переопределения не применены: ${unusedOverrides.join(', ')}`);
   }
 
   payouts.sort((a, b) => a.key.localeCompare(b.key));

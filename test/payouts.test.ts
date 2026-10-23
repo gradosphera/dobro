@@ -132,3 +132,39 @@ test('payouts: claim без аттестации попадает в issues', ()
   assert.equal(plan.payouts.length, 0);
   assert.ok(plan.issues.some((issue) => issue.kind === 'claim-without-attestation'));
 });
+
+test('payouts: подтверждённый адрес-исключение заменяет claim sender', () => {
+  const plan = buildPayoutPlan({
+    transactions: [attestation(97062745, 3, '100'), claim(97062745, VOLUNTEER, '110')],
+    owner: OWNER,
+    orgId: 10072836,
+    period: '2026-10',
+    overrides: {
+      '10072836:97062745:2026-10': {
+        recipient: OTHER,
+        reason: 'адрес подтверждён лидером',
+      },
+    },
+  });
+
+  assert.equal(plan.payouts.length, 1);
+  assert.equal(plan.payouts[0]?.recipient, OTHER);
+  assert.equal(plan.payouts[0]?.claimRecipient, VOLUNTEER);
+  assert.equal(plan.payouts[0]?.recipientSource, 'override');
+  assert.equal(plan.payouts[0]?.recipientReason, 'адрес подтверждён лидером');
+  assert.ok(plan.issues.some((issue) => issue.kind === 'recipient-override'));
+});
+
+test('payouts: неприменённое исключение — ошибка', () => {
+  assert.throws(
+    () =>
+      buildPayoutPlan({
+        transactions: [attestation(1, 3, '100'), claim(1, VOLUNTEER, '110')],
+        owner: OWNER,
+        orgId: 10072836,
+        period: '2026-10',
+        overrides: { '10072836:999:2026-10': OTHER },
+      }),
+    /Переопределения не применены/,
+  );
+});

@@ -1,0 +1,49 @@
+{
+  "version": 1,
+  "orgId": 10072836,
+  "period": "2026-10",
+  "owner": "EQB7fbZPQ0MGHJt-hGpgAAfQT-tSXm2wMcOSzllnBs-zA3jz",
+  "generatedAt": "2026-10-23T03:13:21.477Z",
+  "payouts": [
+    {
+      "key": "10072836:97062745:2026-10",
+      "orgId": 10072836,
+      "volunteerId": 97062745,
+      "period": "2026-10",
+      "recipient": "EQB_mshOVfu3KjurAFiusAJRfBG0RaZ_yn8yk3j29d_z6CiD",
+      "hours": 3,
+      "amount": 3,
+      "attestationTx": "ZyVAgR6p6V4gpkNKNif773XqAwGmK0ZR0ozQLGKSysw=",
+      "attestationLt": "111737984000006",
+      "claimTx": "DeUD/9J7d9kwQiVnP67EQTHj+FMTuciThfnBas8Ud2I=",
+      "claimLt": "111769551000005",
+      "claimedAt": "2026-10-23T03:03:36.000Z",
+      "claimRecipient": "EQCjNf6y_RhVATipbgKpCBAa8h5z6mwIXv3oDY7UZRyv0w3m",
+      "recipientSource": "override",
+      "recipientReason": "адрес подтверждён пользователем 2026-10-23; claim sender отличается"
+    }
+  ],
+  "unclaimed": [],
+  "totals": {
+    "attestations": 1,
+    "claims": 1,
+    "payouts": 1,
+    "totalHours": 3,
+    "totalAmount": 3,
+    "unclaimed": 0
+  },
+  "issues": [
+    {
+      "kind": "recipient-override",
+      "key": "10072836:97062745:2026-10",
+      "detail": "claim EQCjNf6y_RhVATipbgKpCBAa8h5z6mwIXv3oDY7UZRyv0w3m → EQB_mshOVfu3KjurAFiusAJRfBG0RaZ_yn8yk3j29d_z6CiD (адрес подтверждён пользователем 2026-10-23; claim sender отличается)"
+    }
+  ],
+  "source": {
+    "owner": "EQB7fbZPQ0MGHJt-hGpgAAfQT-tSXm2wMcOSzllnBs-zA3jz",
+    "snapshot": "public/data/orgs/10072836.json",
+    "transactions": 20,
+    "fetchedAt": "2026-10-23T03:13:21.477Z",
+    "recipients": "payouts/recipients-mainnet.json"
+  }
+}

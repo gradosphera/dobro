@@ -3,6 +3,7 @@
  *
  *   npm run payouts:build -- --org 10072836 --period 2026-10
  *   npm run payouts:build -- --org 10072836 --period 2026-10 --owner EQ… --out plan.json
+ *   … --recipients payouts/recipients.json   # подтверждённые адреса-исключения
  *
  * Скрипт читает снапшот организации (owner DAO), историю owner через tonapi,
  * склеивает аттестации и клеймы и пишет payouts.json. Деньги не двигает.
@@ -11,7 +12,7 @@
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 
-import { buildPayoutPlan } from '../lib/payouts.ts';
+import { buildPayoutPlan, type RecipientOverrides } from '../lib/payouts.ts';
 import { isPeriod, type OrgSnapshot } from '../lib/snapshot.ts';
 import { normalizeTonAddress } from '../lib/ton.ts';
 import { fetchAccountTransactions } from '../lib/chain-transactions.ts';
@@ -45,13 +46,24 @@ async function main() {
   console.log(`org ${orgId}  period ${period}  owner ${owner}`);
   console.log(`читаю историю owner (до ${maxTransactions} транзакций, по ${limit})…`);
 
+  const recipientsPath = arg('recipients');
+  let overrides: RecipientOverrides | undefined;
+  if (recipientsPath) {
+    const raw = JSON.parse(await readFile(recipientsPath, 'utf8')) as {
+      overrides?: RecipientOverrides;
+    } & RecipientOverrides;
+    overrides = raw.overrides ?? raw;
+    console.log(`overrides ${Object.keys(overrides).length} ← ${recipientsPath}`);
+  }
+
   const transactions = await fetchAccountTransactions(owner, { maxTransactions, limit });
-  const plan = buildPayoutPlan({ transactions, owner, orgId, period });
+  const plan = buildPayoutPlan({ transactions, owner, orgId, period, overrides });
   const output = {
     ...plan,
     source: {
       owner,
       snapshot: snapshotPath,
+      recipients: recipientsPath ?? null,
       transactions: transactions.length,
       fetchedAt: new Date().toISOString(),
     },
