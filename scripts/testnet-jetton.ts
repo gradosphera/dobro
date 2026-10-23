@@ -29,8 +29,11 @@ import {
   createHighload,
   loadHighloadCode,
 } from '../lib/highload.ts';
+import { isTimeout, retry, rpcAdapter, sleep } from '../lib/ton-rpc.ts';
 
 const MINT_AMOUNT = 1_000n;
+const MINT_TON = toNano('0.9');
+const TON_AMOUNT = toNano('0.1');
 
 function mnemonic(env: string): string[] {
   const value = process.env[env]?.trim();
@@ -52,13 +55,18 @@ function walletData(owner: Address, master: Address): Cell {
     .endCell();
 }
 
+async function getSeqno(wallet: OpenedContract<WalletContractV4>): Promise<number> {
+  await sleep(500);
+  return retry('getSeqno', () => wallet.getSeqno());
+}
+
 async function waitForSeqno(
   wallet: OpenedContract<WalletContractV4>,
   previous: number,
 ): Promise<void> {
   for (let attempt = 0; attempt < 60; attempt++) {
     await new Promise((resolve) => setTimeout(resolve, 2000));
-    if ((await wallet.getSeqno()) > previous) return;
+    if ((await getSeqno(wallet)) > previous) return;
   }
   throw new Error('Не дождались подтверждения (120 c)');
 }
@@ -68,9 +76,27 @@ async function send(
   secretKey: Buffer,
   messages: Parameters<WalletContractV4['sendTransfer']>[1]['messages'],
 ): Promise<void> {
-  const seqno = await wallet.getSeqno();
-  await wallet.sendTransfer({ seqno, secretKey, messages });
-  await waitForSeqno(wallet, seqno);
+  const seqno = await getSeqno(wallet);
+  for (let attempt = 0; attempt < 6; attempt++) {
+    await sleep(1000);
+    try {
+      await wallet.sendTransfer({ seqno, secretKey, messages });
+    } catch (err) {
+      const status = (err as { response?: { status?: number } }).response?.status;
+      await sleep(5000);
+      try {
+        if ((await getSeqno(wallet)) > seqno) return;
+      } catch {
+        // RPC всё ещё недоступен — решаем по типу ошибки ниже
+      }
+      if (status !== 429 && !isTimeout(err)) throw err;
+      console.log(`${status ?? 'timeout'}, повторяем отправку…`);
+      continue;
+    }
+    await waitForSeqno(wallet, seqno);
+    return;
+  }
+  throw new Error('Не удалось отправить после повторов');
 }
 
 async function main() {
@@ -81,6 +107,8 @@ async function main() {
   const client = new TonClient({
     endpoint: 'https://testnet.toncenter.com/api/v2/jsonRPC',
     apiKey: process.env.TONCENTER_API_KEY,
+    timeout: 30_000,
+    httpAdapter: rpcAdapter,
   });
 
   const funderKey = await mnemonicToPrivateKey(mnemonic('HIGHLOAD_FUNDER_MNEMONIC'));
@@ -93,13 +121,15 @@ async function main() {
     await loadHighloadCode(),
   );
 
-  const balance = await client.getBalance(funder.address);
+  await sleep(1000);
+  const balance = await retry('getBalance', () => client.getBalance(funder.address));
   console.log(`funder   ${funder.address.toString()}  ${balance} nanoTON`);
-  if (balance < toNano('6')) {
-    throw new Error(`Пополните funder минимум на 6 test TON: ${funder.address.toString()}`);
+  if (balance < toNano('0.05')) {
+    throw new Error(`Пополните funder test TON: ${funder.address.toString()}`);
   }
 
-  const highloadState = await client.getContractState(highload.address);
+  await sleep(1000);
+  const highloadState = await retry('getContractState(highload)', () => client.getContractState(highload.address));
   if (highloadState.state !== 'active') {
     throw new Error(
       `Сначала задеплойте highload: ${highload.address.toString()} (npm run highload:deploy -- --network testnet)`,
@@ -121,8 +151,12 @@ async function main() {
     data: walletData(highload.address, minterAddress),
   });
 
-  const minterState = await client.getContractState(minterAddress);
+  await sleep(1000);
+  const minterState = await retry('getContractState(minter)', () => client.getContractState(minterAddress));
   if (minterState.state !== 'active') {
+    if (balance < toNano('0.35')) {
+      throw new Error(`Для деплоя минтера нужно ещё test TON: ${funder.address.toString()}`);
+    }
     console.log(`деплой минтера ${minterAddress.toString()}…`);
     await send(funder, funderKey.secretKey, [
       internal({
@@ -135,12 +169,19 @@ async function main() {
     ]);
   }
 
-  const existing = await client
-    .runMethod(highloadJetton, 'get_wallet_data')
-    .then((res) => res.stack.readBigNumber())
-    .catch(() => 0n);
+  await sleep(1000);
+  const jettonState = await retry('getContractState(jetton)', () => client.getContractState(highloadJetton));
+  const existing =
+    jettonState.state === 'active'
+      ? await retry('get_wallet_data', () =>
+          client.runMethod(highloadJetton, 'get_wallet_data').then((res) => res.stack.readBigNumber()),
+        )
+      : 0n;
 
   if (existing === 0n) {
+    if (balance < MINT_TON + toNano('0.05')) {
+      throw new Error(`Для минта нужно ещё test TON: ${funder.address.toString()}`);
+    }
     console.log(`минт ${MINT_AMOUNT} test BLG на ${highload.address.toString()}…`);
     const internalTransfer = beginCell()
       .storeUint(0x178d4519, 32)
@@ -155,16 +196,12 @@ async function main() {
       .storeUint(0x642b7d07, 32)
       .storeUint(0, 64)
       .storeAddress(highload.address)
-      .storeCoins(toNano('0.2'))
+      .storeCoins(TON_AMOUNT)
       .storeRef(internalTransfer)
       .endCell();
-    const seqno = await funder.getSeqno();
-    await funder.sendTransfer({
-      seqno,
-      secretKey: funderKey.secretKey,
-      messages: [internal({ to: minterAddress, value: toNano('5'), body })],
-    });
-    await waitForSeqno(funder, seqno);
+    await send(funder, funderKey.secretKey, [
+      internal({ to: minterAddress, value: MINT_TON, body }),
+    ]);
   }
 
   const metadata = {

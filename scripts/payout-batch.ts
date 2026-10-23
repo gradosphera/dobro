@@ -30,6 +30,7 @@ import {
   takeQueryId,
 } from '../lib/highload.ts';
 import type { Payout, PayoutPlan } from '../lib/payouts.ts';
+import { rpcAdapter } from '../lib/ton-rpc.ts';
 
 function arg(name: string): string | undefined {
   const index = process.argv.indexOf(`--${name}`);
@@ -138,6 +139,8 @@ async function main() {
         ? 'https://toncenter.com/api/v2/jsonRPC'
         : 'https://testnet.toncenter.com/api/v2/jsonRPC'),
     apiKey: process.env.TONCENTER_API_KEY,
+    timeout: 60_000,
+    httpAdapter: rpcAdapter,
   });
 
   const balance = await client.getBalance(highload.address);

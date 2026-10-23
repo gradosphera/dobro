@@ -50,13 +50,30 @@ function hex(value: number, width = 8): string {
   return `0x${value.toString(16).padStart(width, '0')}`;
 }
 
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+async function retry<T>(label: string, fn: () => Promise<T>): Promise<T> {
+  for (let attempt = 0; attempt < 8; attempt++) {
+    try {
+      return await fn();
+    } catch (err) {
+      const status = (err as { response?: { status?: number } }).response?.status;
+      if (status !== 429) throw err;
+      const wait = 2000 * (attempt + 1);
+      console.log(`${label}: 429, ждём ${wait} мс…`);
+      await sleep(wait);
+    }
+  }
+  throw new Error(`${label}: toncenter 429 после повторов`);
+}
+
 async function waitForSeqno(wallet: { getSeqno(): Promise<number> }, previous: number) {
   for (let attempt = 0; attempt < 60; attempt++) {
     await new Promise((resolve) => setTimeout(resolve, 2000));
     try {
       if ((await wallet.getSeqno()) > previous) return;
     } catch {
-      // кошелёк ещё не проиндексирован
+      // кошелёк ещё не задеплоен/не проиндексирован
     }
   }
   throw new Error('Не дождались подтверждения деплоя (120 c)');
@@ -106,7 +123,8 @@ async function main() {
     apiKey: process.env.TONCENTER_API_KEY,
   });
 
-  const state = await client.getContractState(highload.address);
+  await sleep(1000);
+  const state = await retry('getContractState(highload)', () => client.getContractState(highload.address));
   if (state.state === 'active') {
     console.log('highload уже задеплоен, отправка не нужна');
     return;
@@ -116,10 +134,14 @@ async function main() {
   const funderWallet = client.open(
     WalletContractV4.create({ workchain: 0, publicKey: funder.publicKey }),
   );
-  const seqno = await funderWallet.getSeqno();
+  await sleep(1000);
+  const funderState = await retry('getContractState(funder)', () => client.getContractState(funderWallet.address));
+  await sleep(500);
+  const seqno = funderState.state === 'active' ? await retry('getSeqno', () => funderWallet.getSeqno()) : 0;
 
   console.log(`деплой ${highload.address.toString()} на ${value} TON…`);
-  await funderWallet.sendTransfer({
+  await sleep(1000);
+  await retry('sendTransfer', () => funderWallet.sendTransfer({
     seqno,
     secretKey: funder.secretKey,
     sendMode: SendMode.PAY_GAS_SEPARATELY,
@@ -132,7 +154,7 @@ async function main() {
         bounce: false,
       }),
     ],
-  });
+  }));
 
   await waitForSeqno(funderWallet, seqno);
   console.log(`deployed ${highload.address.toString()}  subwallet ${hex(subwalletId)}`);
