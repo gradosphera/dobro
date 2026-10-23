@@ -15,7 +15,8 @@
     "build:web": "node scripts/build-web.mjs",
     "payouts:build": "node --experimental-strip-types scripts/payouts.ts",
     "highload:deploy": "node --experimental-strip-types scripts/highload-deploy.ts",
-    "payouts:batch": "node --experimental-strip-types scripts/payout-batch.ts"
+    "payouts:batch": "node --experimental-strip-types scripts/payout-batch.ts",
+    "testnet:jetton": "node --env-file=state/testnet.env --experimental-strip-types scripts/testnet-jetton.ts"
   },
   "engines": {
     "node": ">=20"
