@@ -21,11 +21,13 @@
     "@neondatabase/serverless": "^1.2.0",
     "@ton/core": "^0.63.1",
     "@ton/crypto": "^3.3.0",
+    "@ton/ton": "^16.3.0",
     "@tonconnect/ui": "5.0.1",
     "@vercel/node": "^5.3.0",
     "buffer": "^6.0.3"
   },
   "devDependencies": {
+    "@ton/sandbox": "^0.45.0",
     "@types/node": "^22.10.2",
     "esbuild": "^0.28.2",
     "typescript": "^5.7.3"
