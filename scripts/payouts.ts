@@ -5,7 +5,7 @@
  *   npm run payouts:build -- --org 10072836 --period 2026-10 --owner EQ… --out plan.json
  *   … --recipients payouts/recipients.json   # подтверждённые адреса-исключения
  *
- * Скрипт читает снапшот организации (owner DAO), историю owner через tonapi,
+ * Скрипт читает снапшот организации (owner ДАО), историю owner через tonapi,
  * склеивает аттестации и клеймы и пишет payouts.json. Деньги не двигает.
  */
 

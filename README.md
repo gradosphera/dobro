@@ -376,7 +376,7 @@ robots.txt регулирует краулеров, а не API-клиентов
 | **A. Криптографический** | `daoRoles.owner` DAO совпадает с кошельком из TON Connect | `GET /api/verify-owner` |
 | **B. Организационный** | в публичном документе карточки организации записан адрес DAO | `GET /api/verify-org-doc` |
 
-### 7.1 Слой A — владелец DAO
+### 7.1 Слой A — владелец ДАО
 
 ```http
 GET /api/verify-owner?org=10072836&dao=EQDExlp6EjkVN-OJ1ZcGLEYlITaold5ytBP3e8g6g_BIRaZX&wallet=EQB7fbZPQ0MGHJt-hGpgAAfQT-tSXm2wMcOSzllnBs-zA3jz
@@ -401,9 +401,9 @@ GET /api/verify-owner?org=10072836&dao=EQDExlp6EjkVN-OJ1ZcGLEYlITaold5ytBP3e8g6g
 ```
 
 * `ok` = организация верифицирована на dobro.ru **и** (если передан `wallet`)
-  кошелёк — `owner` DAO.
+  кошелёк — `owner` ДАО.
 * `verdict = proposalOwner` даёт право создавать предложения, но **не**
-  менять метаданные DAO: `SetMetadata` принимает только `owner`.
+  менять метаданные ДАО: `SetMetadata` принимает только `owner`.
 * Адреса сравниваются по raw-представлению, поэтому `EQ…`/`UQ…`/`0:hex`
   одного адреса эквивалентны.
 * Источник состояния — публичный `https://api.ton.vote/dao/{address}`.
@@ -532,7 +532,7 @@ GET /api/auth-me            Authorization: Bearer <token>
 ```
 
 Проверки: организация верифицирована на dobro.ru; кошелёк сессии — `owner`
-DAO (свежее состояние из сети); адрес DAO найден в документе организации
+ДАО (свежее состояние из сети); адрес ДАО найден в документе организации
 (слой B). Пишутся `organizations` (DAO, owner, жетон, отпечаток документа) и
 `members` (лидер). `admin` жетона сверяется с owner и возвращается как
 `checks.jettonMatchesOwner`: для BLG это `false` (админ — мультисиг фонда),
@@ -558,7 +558,7 @@ DAO (свежее состояние из сети); адрес DAO найден
   (аттестация сохраняется, клейм не создаётся).
 * Идемпотентно: повтор за тот же `(orgId, volunteerId, месяц)` возвращает
   существующую запись (`created: false`, HTTP 200).
-* Модель доверия v1: лидер (owner DAO) отвечает за соответствие
+* Модель доверия v1: лидер (owner ДАО) отвечает за соответствие
   `volunteerId ↔ wallet`; публичного списка волонтёров с кошельками у
   dobro.ru нет.
 
@@ -596,7 +596,7 @@ npm run snapshot -- --org 10072836 --dao EQDExlp6EjkVN-OJ1ZcGLEYlITaold5ytBP3e8g
 ```
 
 Пишет `public/data/orgs/<id>.json` (карточка, `owner`, жетон, sha256
-документа с адресом DAO) и `public/data/index.json`. В снапшоте нет ПДн.
+документа с адресом ДАО) и `public/data/index.json`. В снапшоте нет ПДн.
 
 Аттестация часов — self-transfer от кошелька лидера с комментарием:
 
@@ -639,7 +639,7 @@ SITE_URL=https://ваш-домен npm run build:web
 ### Сценарий
 
 1. Подключить кошелёк (mainnet) через TON Connect.
-2. UI читает owner DAO из `api.ton.vote` (если сеть недоступна — берёт
+2. UI читает owner ДАО из `api.ton.vote` (если сеть недоступна — берёт
    owner из снапшота и предупреждает) и сверяет с адресом кошелька.
 3. Лидер вводит `volunteerId`, месяц и часы; видит `floor(hours)` BLG.
 4. `sendTransaction` — self-transfer на 0.01 TON с комментарием
@@ -651,8 +651,8 @@ SITE_URL=https://ваш-домен npm run build:web
 (`analytics: { mode: 'off' }`), интерфейс на русском в тёмной теме,
 обрабатываются `connectionRestored` и `UserRejectsError`.
 
-Ограничения: owner DAO — единственный, кто может писать; тестнет
-отключён (DAO mainnet); TON Connect UI поставляется локально, без CDN.
+Ограничения: owner ДАО — единственный, кто может писать; тестнет
+отключён (ДАО mainnet); TON Connect UI поставляется локально, без CDN.
 
 ---
 
@@ -666,7 +666,7 @@ SITE_URL=https://ваш-домен npm run build:web
 
 Клейм-страница: `/claim.html?org=10072836` (ссылки есть на дашборде и в
 `/attest.html`). Волонтёр подключает кошелёк и отправляет **0.01 TON** на
-owner DAO с комментарием:
+owner ДАО с комментарием:
 
 ```
 dobro/claim/1 o=10072836 v=95490358 p=2026-10

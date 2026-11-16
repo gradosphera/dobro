@@ -1,5 +1,5 @@
 /**
- * Клейм волонтёра: отправка 0.01 TON на owner DAO с комментарием
+ * Клейм волонтёра: отправка 0.01 TON на owner ДАО с комментарием
  * `dobro/claim/1 …`. Sender транзакции — адрес получателя BLG.
  */
 
@@ -95,8 +95,8 @@ async function loadSnapshot(): Promise<void> {
     box.append(title);
 
     const rows: Array<[string, string]> = [
-      ['DAO', snapshot.dao],
-      ['Owner DAO', snapshot.daoOwner ?? '—'],
+      ['ДАО', snapshot.dao],
+      ['Owner ДАО', snapshot.daoOwner ?? '—'],
     ];
     for (const [key, value] of rows) {
       const row = document.createElement('div');
@@ -121,7 +121,7 @@ async function loadSnapshot(): Promise<void> {
     if (!snapshot.daoOwner) {
       const warn = document.createElement('p');
       warn.className = 'warn';
-      warn.textContent = 'В снапшоте нет owner DAO — клейм недоступен.';
+      warn.textContent = 'В снапшоте нет owner ДАО — клейм недоступен.';
       box.append(warn);
     }
   } catch (err) {
@@ -155,7 +155,7 @@ function renderWallet(): void {
   }
   if (snapshot?.daoOwner && sameAddress(wallet.account.address, snapshot.daoOwner)) {
     box.className = 'hint err';
-    box.textContent = 'Это кошелёк owner DAO. Клейм отправляет волонтёр со своего кошелька.';
+    box.textContent = 'Это кошелёк owner ДАО. Клейм отправляет волонтёр со своего кошелька.';
     send.disabled = true;
     return;
   }

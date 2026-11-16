@@ -1,8 +1,8 @@
 /**
  * Сборка плана выплат из on-chain историй:
  *
- *   attestation: dobro/att/1 от owner DAO (self-transfer)
- *   claim:       dobro/claim/1 от волонтёра на owner DAO
+ *   attestation: добро/att/1 от owner ДАО (self-transfer)
+ *   claim:       добро/claim/1 от волонтёра на owner ДАО
  *
  * Для ключа `(orgId, volunteerId, period)` действует последняя аттестация
  * и первый клейм. Сумма — floor(hours) BLG (decimals 0).
@@ -105,7 +105,7 @@ function textOf(tx: ChainTransaction): string | null {
 }
 
 /**
- * Извлекает аттестации и клеймы из транзакций owner DAO.
+ * Извлекает аттестации и клеймы из транзакций owner ДАО.
  * Учитываются только успешные входящие сообщения на owner.
  */
 export function extractPayoutEvents(

@@ -110,7 +110,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         expected: daoAddress,
         scanned: proof.scanned,
         skipped: proof.skipped,
-        hint: 'Добавьте vote.txt с адресом DAO в карточку организации на dobro.ru',
+        hint: 'Добавьте vote.txt с адресом ДАО в карточку организации на dobro.ru',
       });
     }
 
@@ -158,7 +158,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(404).json({ error: `Организация ${orgId} не найдена на dobro.ru` });
     }
     if (err instanceof TonError && err.status === 404) {
-      return res.status(404).json({ error: `DAO ${daoAddress} не найден в сети TON` });
+      return res.status(404).json({ error: `ДАО ${daoAddress} не найден в сети TON` });
     }
     return res.status(502).json({
       error: message,

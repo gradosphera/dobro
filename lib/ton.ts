@@ -1,5 +1,5 @@
 /**
- * Чтение состояния DAO из публичного API ton.vote.
+ * Чтение состояния ДАО из публичного API ton.vote.
  *
  *   GET https://api.ton.vote/dao/{address}
  *       -> daoAddress, daoId, daoRoles { owner, proposalOwner },
@@ -68,9 +68,9 @@ export function parseTonAddress(input: unknown): Address | null {
   }
 }
 
-/** Канонический вид для вывода: bounceable, url-safe (`EQ…`). */
+/** Канонический вид для вывода: non-bounceable, url-safe (`UQ…`). */
 export function normalizeTonAddress(input: string): string | null {
-  return parseTonAddress(input)?.toString({ bounceable: true, urlSafe: true }) ?? null;
+  return parseTonAddress(input)?.toString({ bounceable: false, urlSafe: true }) ?? null;
 }
 
 export function sameTonAddress(a: string, b: string): boolean {
@@ -108,14 +108,14 @@ interface RawDaoResponse {
 }
 
 /**
- * Состояние DAO. 404 -> TonError(404), сеть/5xx -> TonError(502).
+ * Состояние ДАО. 404 -> TonError(404), сеть/5xx -> TonError(502).
  */
 export async function getDao(
   address: string,
   opts: { timeoutMs?: number; retries?: number } = {},
 ): Promise<DaoState> {
   const parsed = parseTonAddress(address);
-  if (!parsed) throw new TonError('Некорректный адрес DAO', 400);
+  if (!parsed) throw new TonError('Некорректный адрес ДАО', 400);
 
   const canonical = parsed.toString({ bounceable: true, urlSafe: true });
   const { timeoutMs = DEFAULT_TIMEOUT_MS, retries = 1 } = opts;
@@ -131,7 +131,7 @@ export async function getDao(
       });
 
       if (res.status === 404) {
-        throw new TonError(`DAO не найден: ${canonical}`, 404);
+        throw new TonError(`ДАО не найден: ${canonical}`, 404);
       }
       if (!res.ok) {
         throw new TonError(`ton.vote API: HTTP ${res.status}`, res.status);
@@ -175,5 +175,5 @@ export async function getDao(
 
   throw lastError instanceof Error
     ? lastError
-    : new TonError(`Не удалось прочитать состояние DAO ${canonical}`);
+    : new TonError(`Не удалось прочитать состояние ДАО ${canonical}`);
 }

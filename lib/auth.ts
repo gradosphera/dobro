@@ -133,10 +133,10 @@ function parseToken(token: string, kind: TokenBody['k']): TokenBody {
 function issued(kind: TokenBody['k'], wallet: string, expMs: number): IssuedToken {
   const address = parseTonAddress(wallet);
   if (!address) throw new AuthError('Некорректный адрес кошелька', 400);
-  const token = issue(kind, address.toString({ bounceable: true, urlSafe: true }), expMs);
+  const token = issue(kind, address.toString({ bounceable: false, urlSafe: true }), expMs);
   return {
     token,
-    wallet: address.toString({ bounceable: true, urlSafe: true }),
+    wallet: address.toString({ bounceable: false, urlSafe: true }),
     expiresAt: new Date(Math.floor(expMs / 1000) * 1000).toISOString(),
   };
 }

@@ -65,7 +65,7 @@ async function main() {
   if (!daoInput) throw new Error('Укажите адрес DAO: --dao EQ…');
 
   const dao = normalizeTonAddress(daoInput);
-  if (!dao) throw new Error(`Некорректный адрес DAO: ${daoInput}`);
+  if (!dao) throw new Error(`Некорректный адрес ДАО: ${daoInput}`);
 
   const org = await getOrganization(orgId);
   const proof = await findDaoProof(org.docs ?? [], dao);

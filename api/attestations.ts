@@ -150,7 +150,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const binding = await getBinding(orgId);
     if (!binding?.daoAddress) {
       return res.status(409).json({
-        error: `Организация ${orgId} ещё не привязана к DAO`,
+        error: `Организация ${orgId} ещё не привязана к ДАО`,
         hint: 'Сначала вызовите POST /api/bind',
       });
     }
@@ -158,7 +158,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const dao = await getDao(binding.daoAddress);
     if (!dao.owner || !sameTonAddress(dao.owner, session.wallet)) {
       return res.status(403).json({
-        error: 'Кошелёк сессии не является owner DAO',
+        error: 'Кошелёк сессии не является owner ДАО',
         owner: dao.owner,
         wallet: session.wallet,
       });

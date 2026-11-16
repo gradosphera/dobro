@@ -3,7 +3,7 @@
  *
  * Слой B: организационное доказательство. Скачивает публичные документы
  * карточки организации на dobro.ru (вкладка «Документы») и ищет в текстовых
- * файлах адрес DAO. Возвращает сам документ, его sha256 и все найденные
+ * файлах адрес ДАО. Возвращает сам документ, его sha256 и все найденные
  * адреса — это и есть доказательство, которое можно показать пользователю.
  *
  * Ответ всегда JSON. Коды: 200 — проверка выполнена, 400 — некорректные
@@ -43,7 +43,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
   const dao = normalizeTonAddress(daoParam);
   if (!dao) {
-    return res.status(400).json({ error: 'Укажите корректный адрес DAO: ?dao=<address>' });
+    return res.status(400).json({ error: 'Укажите корректный адрес ДАО: ?dao=<address>' });
   }
 
   const deadline = new Deadline(BUDGET_MS);

@@ -29,7 +29,7 @@ dobro/claim/1 o=<orgId> v=<volunteerId> p=YYYY-MM
 
 Правила:
 
-* индексер читает входящие транзакции owner DAO;
+* индексер читает входящие транзакции owner ДАО;
 * `attestations` — комментарии `dobro/att/1` от самого owner;
 * `claims` — комментарии `dobro/claim/1` от любого другого адреса;
 * для ключа `(orgId, volunteerId, period)` берётся **последняя** аттестация

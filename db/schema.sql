@@ -1,10 +1,10 @@
--- Схема Neon Postgres для «Добро.DAO».
+-- Схема Neon Postgres для «Добро.ДАО».
 --
 -- Храним только публичные идентификаторы dobro.ru (org_id, volunteer_id),
 -- TON-адреса, часы и статусы. ФИО, email и телефоны не сохраняем —
 -- это снижает риск по п. 3.7 политики конфиденциальности dobro.ru.
 --
--- Все адреса TON хранятся в bounceable-форме (`EQ…`).
+-- Все адреса TON хранятся в non-bounceable-форме (`UQ…`).
 -- Денежные суммы — в минимальных единицах (BLG decimals = 0).
 
 create table if not exists schema_migrations (

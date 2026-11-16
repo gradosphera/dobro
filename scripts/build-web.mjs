@@ -47,7 +47,7 @@ for (const [entry, outfile] of [
 
 const manifest = {
   url: siteUrl,
-  name: 'Добро.DAO',
+  name: 'Добро.ДАО',
   iconUrl: new URL('icon.png', siteUrl).href,
 };
 

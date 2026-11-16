@@ -48,7 +48,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
   const daoAddress = normalizeTonAddress(daoParam);
   if (!daoAddress) {
-    return res.status(400).json({ error: 'Укажите корректный адрес DAO: ?dao=<address>' });
+    return res.status(400).json({ error: 'Укажите корректный адрес ДАО: ?dao=<address>' });
   }
   const wallet = walletParam ? normalizeTonAddress(walletParam) : null;
   if (walletParam && !wallet) {
@@ -76,7 +76,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const message = err instanceof Error ? err.message : 'Неизвестная ошибка';
     return res.status(502).json({
       error: message,
-      hint: 'DAO читается через api.ton.vote, организация — через dobro.ru. Повторите запрос позже.',
+      hint: 'ДАО читается через api.ton.vote, организация — через dobro.ru. Повторите запрос позже.',
       elapsedMs: BUDGET_MS - deadline.remainingMs,
     });
   }

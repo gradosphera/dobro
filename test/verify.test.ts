@@ -14,8 +14,8 @@ import { getOrganization } from '../lib/dobro.ts';
 import { extractTonAddresses, findDaoProof } from '../lib/docs.ts';
 import { getDao, normalizeTonAddress, sameTonAddress } from '../lib/ton.ts';
 
-const DAO = 'EQDExlp6EjkVN-OJ1ZcGLEYlITaold5ytBP3e8g6g_BIRaZX';
-const OWNER = 'EQB7fbZPQ0MGHJt-hGpgAAfQT-tSXm2wMcOSzllnBs-zA3jz';
+const DAO = 'UQDExlp6EjkVN-OJ1ZcGLEYlITaold5ytBP3e8g6g_BIRfuS';
+const OWNER = 'UQB7fbZPQ0MGHJt-hGpgAAfQT-tSXm2wMcOSzllnBs-zAyU2';
 const ORG = 10072836;
 
 type Handler = (req: unknown, res: unknown) => Promise<unknown>;
@@ -50,9 +50,9 @@ async function call(handler: Handler, method: string, query: Record<string, stri
 }
 
 test('адрес сравнивается независимо от bounceable/testnet формы', () => {
-  const uq = 'UQDExlp6EjkVN-OJ1ZcGLEYlITaold5ytBP3e8g6g_BIRfuS';
-  assert.equal(normalizeTonAddress(uq), DAO);
-  assert.ok(sameTonAddress(DAO, uq), 'EQ и UQ одного адреса должны совпадать');
+  const eq = 'EQDExlp6EjkVN-OJ1ZcGLEYlITaold5ytBP3e8g6g_BIRaZX';
+  assert.equal(normalizeTonAddress(eq), DAO);
+  assert.ok(sameTonAddress(DAO, eq), 'EQ и UQ одного адреса должны совпадать');
   assert.ok(sameTonAddress(DAO, '0:c4c65a7a12391537e389d597062c46252136a895de72b413f77bc83a83f04845'));
 });
 
@@ -69,14 +69,18 @@ test('из текста извлекается адрес, но не кусок 
   const raw = '0:c4c65a7a12391537e389d597062c46252136a895de72b413f77bc83a83f04845';
   assert.deepEqual(extractTonAddresses(`address = ${raw}`), [DAO]);
   assert.deepEqual(extractTonAddresses(`x${DAO}`), [], 'адрес внутри base64 не должен находиться');
+
+  // bounceable EQ также нормализуется в non-bounceable DAO
+  const eq = 'EQDExlp6EjkVN-OJ1ZcGLEYlITaold5ytBP3e8g6g_BIRaZX';
+  assert.deepEqual(extractTonAddresses(`DAO: ${eq}`), [DAO]);
 });
 
 test('getDao читает состояние DAO Градосфера', async () => {
   const dao = await getDao(DAO);
-  assert.equal(dao.address, DAO);
+  assert.ok(sameTonAddress(dao.address, DAO), `address = ${dao.address}`);
   assert.equal(dao.daoId, 85);
   assert.ok(dao.owner && sameTonAddress(dao.owner, OWNER), `owner = ${dao.owner}`);
-  assert.ok(dao.proposalOwner && sameTonAddress(dao.proposalOwner, OWNER));
+  assert.ok(dao.proposalOwner && sameTonAddress(dao.proposalOwner, OWNER), `proposalOwner = ${dao.proposalOwner}`);
   assert.ok(dao.metadata.jetton?.startsWith('EQ'), 'у DAO должен быть жетон');
   assert.equal(dao.metadata.dns, 'gradosphera.ton');
   assert.equal(dao.metadata.terms, null, 'пустой terms должен приходить как null');
@@ -91,7 +95,7 @@ test('документ vote.txt доказывает связь организа
   assert.equal(proof.found, true, 'адрес DAO должен найтись в документах');
   assert.equal(proof.document?.name, 'vote.txt');
   assert.ok(proof.document?.sha256 && /^[0-9a-f]{64}$/.test(proof.document.sha256));
-  assert.ok(proof.addresses.includes(DAO));
+  assert.ok(proof.addresses.some((a) => sameTonAddress(a, DAO)), `адрес DAO найден в ${proof.addresses}`);
   console.log(`  ${proof.document?.name}: sha256 ${proof.document?.sha256}`);
 });
 
@@ -103,7 +107,7 @@ test('чужой DAO не подтверждается документами о
   assert.ok(proof.scanned.length > 0, 'документы должны быть просканированы');
 });
 
-test('GET /api/verify-owner: владелец DAO подтверждается', async () => {
+test('GET /api/verify-owner: владелец ДАО подтверждается', async () => {
   const res = await call(verifyOwner as unknown as Handler, 'GET', {
     org: String(ORG),
     dao: DAO,

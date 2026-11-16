@@ -1,5 +1,5 @@
 /**
- * Репозиторий привязок «организация dobro.ru ↔ DAO ↔ жетон».
+ * Репозиторий привязок «организация dobro.ru ↔ ДАО ↔ жетон».
  * Требует настроенной БД (lib/db.ts); без неё вызывающий код получает 503.
  */
 
@@ -117,7 +117,7 @@ export async function saveBinding(input: SaveBindingInput): Promise<OrgBinding> 
   return mapBinding(row);
 }
 
-/** Лидер организации = owner DAO; фиксируем его кошелёк в members. */
+/** Лидер организации = owner ДАО; фиксируем его кошелёк в members. */
 export async function upsertLeader(
   orgId: number,
   volunteerId: number,

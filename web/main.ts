@@ -1,5 +1,5 @@
 /**
- * Local-first UI: сверка owner DAO и отправка аттестации часов в TON.
+ * Local-first UI: сверка owner ДАО и отправка аттестации часов в TON.
  * TON Connect UI грузится отдельным UMD-бандлом (public/vendor), здесь —
  * только бизнес-логика и сборка payload через @ton/core.
  */
@@ -129,7 +129,7 @@ function renderOrg(): void {
   title.textContent = snapshot.name ?? `Организация ${ORG_ID}`;
   card.append(title);
 
-  kv(card, 'DAO', snapshot.dao, true);
+  kv(card, 'ДАО', snapshot.dao, true);
   kv(card, 'Owner', owner ?? '—', true);
   kv(card, 'Жетон', snapshot.jetton ?? '—', true);
   kv(card, 'Документ', snapshot.doc?.name ?? '—');
@@ -174,7 +174,7 @@ function renderWallet(): void {
 
   if (!wallet) {
     box.className = 'hint';
-    box.textContent = 'Кошелёк не подключён. Подключите кошелёк owner DAO.';
+    box.textContent = 'Кошелёк не подключён. Подключите кошелёк owner ДАО.';
     send.disabled = true;
     return;
   }
@@ -188,13 +188,13 @@ function renderWallet(): void {
 
   if (!sameAddress(wallet.account.address, owner)) {
     box.className = 'hint err';
-    box.textContent = `Кошелёк ${shortAddress(wallet.account.address)} не является owner DAO (${shortAddress(owner ?? '—')}).`;
+    box.textContent = `Кошелёк ${shortAddress(wallet.account.address)} не является owner ДАО (${shortAddress(owner ?? '—')}).`;
     send.disabled = true;
     return;
   }
 
   box.className = 'hint ok';
-  box.textContent = `Owner DAO подтверждён: ${shortAddress(wallet.account.address)}`;
+  box.textContent = `Owner ДАО подтверждён: ${shortAddress(wallet.account.address)}`;
   send.disabled = false;
 }
 
@@ -250,11 +250,11 @@ async function submit(event: SubmitEvent): Promise<void> {
   event.preventDefault();
 
   if (!snapshot || !tonConnect || !wallet) {
-    setStatus('Сначала подключите кошелёк owner DAO.', 'err');
+    setStatus('Сначала подключите кошелёк owner ДАО.', 'err');
     return;
   }
   if (!canSend()) {
-    setStatus('Кошелёк не прошёл проверку owner DAO.', 'err');
+    setStatus('Кошелёк не прошёл проверку owner ДАО.', 'err');
     return;
   }
 
@@ -360,7 +360,7 @@ async function start(): Promise<void> {
     void submit(event);
   });
   updatePreview();
-  setStatus('Снапшот загружен. Подключите кошелёк owner DAO.');
+  setStatus('Снапшот загружен. Подключите кошелёк owner ДАО.');
 
   void refreshOwner();
 }

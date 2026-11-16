@@ -1,8 +1,8 @@
 /**
- * Слой B: доказательство связи организации dobro.ru с DAO.
+ * Слой B: доказательство связи организации dobro.ru с ДАО.
  *
  * Организация прикладывает к своей карточке текстовый документ
- * (`vote.txt`) с адресом DAO. Документ публичен, скачивается без
+ * (`vote.txt`) с адресом ДАО. Документ публичен, скачивается без
  * авторизации, поэтому сервис может проверить его в любой момент.
  *
  *   GET /api/v2/organizations/{id}?with=organizer
@@ -78,7 +78,7 @@ export function extractTonAddresses(text: string): string[] {
     const key = parsed.toRawString();
     if (seen.has(key)) continue;
     seen.add(key);
-    result.push(parsed.toString({ bounceable: true, urlSafe: true }));
+    result.push(parsed.toString({ bounceable: false, urlSafe: true }));
   }
 
   return result;
@@ -180,7 +180,7 @@ function byPriority(a: OrgDocument, b: OrgDocument): number {
 }
 
 /**
- * Ищет в документах организации адрес DAO. Останавливается на первом
+ * Ищет в документах организации адрес ДАО. Останавливается на первом
  * совпадении, но не дольше общего бюджета времени.
  */
 export async function findDaoProof(
@@ -189,7 +189,7 @@ export async function findDaoProof(
   opts: { deadline?: Deadline; maxDocs?: number } = {},
 ): Promise<DocProof> {
   const canonical = normalizeTonAddress(dao);
-  if (!canonical) throw new Error('Некорректный адрес DAO');
+  if (!canonical) throw new Error('Некорректный адрес ДАО');
 
   const scanned: DocScanEntry[] = [];
   const skipped: Array<{ id: string; name: string; reason: string }> = [];
