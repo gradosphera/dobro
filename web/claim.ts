@@ -7,7 +7,7 @@ import { Address } from '@ton/core';
 
 import { encodeClaim } from '../lib/claims.ts';
 import type { OrgSnapshot } from '../lib/snapshot.ts';
-import { textCommentPayload, toFriendlyAddress } from '../lib/ton-comment.ts';
+import { toFriendlyAddress } from '../lib/ton-comment.ts';
 
 const ORG_ID = Number(new URL(location.href).searchParams.get('org') ?? 10072836);
 const CLAIM_AMOUNT = '10000000';
@@ -220,13 +220,34 @@ async function submit(event: SubmitEvent): Promise<void> {
   setStatus('Ожидайте подтверждения в кошельке…');
 
   try {
+    // Encrypt comment via server-side API
+    const sessionToken = localStorage.getItem('dobro:session') ?? '';
+    const encryptRes = await fetch('/api/encrypt-comment', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: sessionToken.startsWith('Bearer ') ? sessionToken : `Bearer ${sessionToken}`,
+      },
+      body: JSON.stringify({
+        recipient: toFriendlyAddress(snapshot.daoOwner!),
+        comment,
+      }),
+    });
+
+    if (!encryptRes.ok) {
+      const errData = await encryptRes.json().catch(() => ({}));
+      throw new Error(errData.error ?? `HTTP ${encryptRes.status}`);
+    }
+
+    const { payload } = (await encryptRes.json()) as { payload: string };
+
     await tonConnect.sendTransaction({
       validUntil: Math.floor(Date.now() / 1000) + VALID_FOR_SECONDS,
       messages: [
         {
-          address: toFriendlyAddress(snapshot.daoOwner),
+          address: toFriendlyAddress(snapshot.daoOwner!),
           amount: CLAIM_AMOUNT,
-          payload: textCommentPayload(comment),
+          payload,
         },
       ],
     });

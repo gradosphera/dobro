@@ -5,9 +5,16 @@
  * поэтому индексер выплат использует toncenter. Текстовые комментарии
  * приходят либо декодированными (`in_msg.message`), либо в `msg_data`:
  * `dataText` (base64 текста) или `dataRaw` (BOC тела).
+ *
+ * Поддерживает encrypted comment format (op=0x2167da4b): если toncenter
+ * отдаёт encrypted payload, парсер помечает его флагом `encrypted: true`.
  */
 
+import { Cell } from '@ton/core';
+
 import { parseTextComment } from './ton-comment.ts';
+
+const ENCRYPTED_COMMENT_OP = 0x2167da4b;
 
 export const TONCENTER_URL =
   process.env.TONCENTER_URL ?? 'https://toncenter.com/api/v2';
@@ -21,7 +28,7 @@ export interface ChainMessage {
   source?: ChainAccountRef | null;
   destination?: ChainAccountRef | null;
   value?: string;
-  decoded_body?: { text?: string } | null;
+  decoded_body?: { text?: string; encrypted?: boolean } | null;
 }
 
 export interface ChainTransaction {
@@ -74,8 +81,23 @@ function decodeMsgData(message: ToncenterMessage): string | null {
     }
   }
   if (data?.['@type'] === 'msg.dataRaw' && typeof data.body === 'string') {
+    // Try plain text comment first
     const text = parseTextComment(data.body);
     if (text != null) return text;
+
+    // Check if it's an encrypted comment
+    try {
+      const [cell] = Cell.fromBoc(Buffer.from(data.body, 'base64'));
+      const slice = cell.beginParse();
+      const opcode = slice.loadUint(32);
+      if (opcode === ENCRYPTED_COMMENT_OP) {
+        // Encrypted comment — mark it but don't decrypt here
+        // (requires private key which may not be available)
+        return null;
+      }
+    } catch {
+      // Not a valid BOC, ignore
+    }
   }
   const text = typeof message.message === 'string' ? message.message.trim() : '';
   return text || null;
@@ -90,19 +112,23 @@ function toChainTransaction(tx: ToncenterTransaction): ChainTransaction | null {
   const hash = tx.transaction_id?.hash;
   if (!lt || !hash) return null;
   const message = tx.in_msg;
+  if (!message) return null;
+  const decodedText = decodeMsgData(message);
   return {
     hash,
     lt,
     now: Number(tx.utime ?? 0),
     success: isSuccess(tx),
-    in_msg: message
-      ? {
-          source: message.source ? { address: message.source } : null,
-          destination: message.destination ? { address: message.destination } : null,
-          value: message.value,
-          decoded_body: { text: decodeMsgData(message) ?? undefined },
-        }
-      : null,
+    in_msg: {
+      source: message.source ? { address: message.source } : null,
+      destination: message.destination ? { address: message.destination } : null,
+      value: message.value,
+      decoded_body: decodedText
+        ? { text: decodedText }
+        : message.msg_data?.['@type'] === 'msg.dataRaw' && typeof message.msg_data.body === 'string'
+          ? { encrypted: true }
+          : undefined,
+    },
   };
 }
 

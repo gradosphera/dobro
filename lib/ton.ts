@@ -10,6 +10,8 @@
  * и сравниваются по raw-представлению (`workchain:hash`), поэтому
  * bounceable/non-bounceable и testnet-форма одного и того же адреса
  * считаются равными.
+ *
+ * Получение recipient public key через toncenter API для encrypted comments.
  */
 
 import { Address } from '@ton/core';
@@ -176,4 +178,74 @@ export async function getDao(
   throw lastError instanceof Error
     ? lastError
     : new TonError(`Не удалось прочитать состояние ДАО ${canonical}`);
+}
+
+// ---------------------------------------------------------------------------
+// Recipient public key for encrypted comments
+// ---------------------------------------------------------------------------
+
+const TONCENTER_API = process.env.TONCENTER_URL ?? 'https://toncenter.com/api/v2';
+
+interface ToncenterAddressInfo {
+  address?: string;
+  info?: {
+    type?: string;
+    balance?: string | number;
+    isContract?: boolean;
+    public_key?: string | null;
+  };
+}
+
+/**
+ * Получает Ed25519 public key адреса через toncenter API.
+ * Возвращает hex-строку (без 0x) или null если key не найден.
+ */
+export async function getRecipientPublicKey(
+  address: string,
+  opts: { timeoutMs?: number; retries?: number } = {},
+): Promise<string | null> {
+  const parsed = parseTonAddress(address);
+  if (!parsed) throw new TonError('Некорректный адрес', 400);
+
+  const { timeoutMs = 7_000, retries = 1 } = opts;
+  const friendly = parsed.toString({ bounceable: false, urlSafe: true });
+
+  const url = `${TONCENTER_API.replace(/\/+$/, '')}/getAddress?address=${encodeURIComponent(friendly)}`;
+
+  let lastError: unknown;
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    try {
+      const res = await fetch(url, {
+        headers: {
+          Accept: 'application/json',
+          'User-Agent': USER_AGENT,
+          ...(process.env.TONCENTER_API_KEY
+            ? { 'X-API-Key': process.env.TONCENTER_API_KEY }
+            : {}),
+        },
+        signal: AbortSignal.timeout(timeoutMs),
+      });
+
+      if (!res.ok) {
+        throw new TonError(`toncenter API: HTTP ${res.status}`, res.status);
+      }
+
+      const data = (await res.json()) as ToncenterAddressInfo;
+      const publicKey = data.info?.public_key ?? null;
+      if (!publicKey || typeof publicKey !== 'string') {
+        return null;
+      }
+      return publicKey;
+    } catch (err) {
+      lastError = err;
+      if (err instanceof TonError && err.status && err.status < 500) throw err;
+      if (attempt < retries) {
+        await new Promise((resolve) => setTimeout(resolve, 300 * 2 ** attempt));
+      }
+    }
+  }
+
+  throw lastError instanceof Error
+    ? lastError
+    : new TonError(`Не удалось получить public key для ${friendly}`);
 }
