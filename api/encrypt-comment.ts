@@ -17,10 +17,8 @@ import { Address } from '@ton/core';
 
 import { requireSession } from '../lib/auth.ts';
 import { isDbConfigured } from '../lib/db.ts';
-import {
-  encryptedCommentPayload,
-  toFriendlyAddress,
-} from '../lib/ton-comment.ts';
+import { encryptedCommentPayload } from '../lib/ton-comment-encrypted.ts';
+import { toFriendlyAddress } from '../lib/ton-comment.ts';
 import { getRecipientPublicKey, TonError } from '../lib/ton.ts';
 
 function body(req: VercelRequest): Record<string, unknown> {

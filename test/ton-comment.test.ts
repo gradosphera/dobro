@@ -14,8 +14,8 @@ import {
   parseTextComment,
   textCommentPayload,
   toFriendlyAddress,
-  encryptedCommentPayload,
 } from '../lib/ton-comment.ts';
+import { encryptedCommentPayload } from '../lib/ton-comment-encrypted.ts';
 
 const COMMENT = encodeAttestation({
   version: 1,
